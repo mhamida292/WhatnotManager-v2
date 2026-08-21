@@ -95,6 +95,80 @@ describe("importWorkbook", () => {
   });
 });
 
+describe("importWorkbook — same-app column drift (older or newer export of this app)", () => {
+  // Rebuild a table's sheet with a different column set, keeping its _meta
+  // table list and every other sheet untouched — simulates a real export
+  // taken before/after a schema change, without going through a full legacy
+  // fixture (the table SET here still matches TABLES exactly).
+  async function withRebuiltSheet(
+    buf: Buffer,
+    table: string,
+    newHeader: string[],
+    newRow: (string | number | null)[],
+  ): Promise<Buffer> {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf as unknown as Parameters<typeof wb.xlsx.load>[0]);
+    wb.removeWorksheet(wb.getWorksheet(table)!.id);
+    const ws = wb.addWorksheet(table);
+    ws.addRow(newHeader);
+    ws.addRow(newRow);
+    return Buffer.from(await wb.xlsx.writeBuffer());
+  }
+
+  it("imports an older export missing columns this version added, filling them from schema defaults", async () => {
+    seed(db);
+    const buf = await exportWorkbook(db);
+    // Simulate a pre-pooled-costing export: app_settings sheet without costing_mode/avg_method.
+    const olderBuf = await withRebuiltSheet(
+      buf,
+      "app_settings",
+      ["id", "owner_share_pct", "giveaway_unit_cents", "default_shipping_supplies_cents", "business_name",
+        "invoice_phone", "invoice_address", "invoice_email", "invoice_show_phone", "invoice_show_address",
+        "invoice_show_email", "whatnot_only"],
+      [1, 75, 400, 0, "DirectDealzz", null, null, null, 1, 1, 1, 0],
+    );
+
+    const target = createDb(":memory:");
+    const res = await importWorkbook(target, olderBuf);
+
+    expect(res.legacy).toBe(false);
+    const settings = target.prepare(
+      "SELECT costing_mode AS cm, avg_method AS am, owner_share_pct AS p FROM app_settings WHERE id = 1"
+    ).get() as { cm: string; am: string; p: number };
+    expect(settings).toEqual({ cm: "per_sku", am: "moving", p: 75 }); // new columns defaulted, old data preserved
+    expect(res.columnDrift).toContainEqual({ table: "app_settings", added: ["costing_mode", "avg_method"], dropped: [] });
+  });
+
+  it("drops a column the file has that this version's schema no longer has, and reports it", async () => {
+    seed(db);
+    const buf = await exportWorkbook(db);
+    const newerBuf = await withRebuiltSheet(
+      buf,
+      "app_settings",
+      ["id", "owner_share_pct", "giveaway_unit_cents", "default_shipping_supplies_cents", "business_name",
+        "invoice_phone", "invoice_address", "invoice_email", "invoice_show_phone", "invoice_show_address",
+        "invoice_show_email", "whatnot_only", "costing_mode", "avg_method", "since_removed_column"],
+      [1, 75, 400, 0, "DirectDealzz", null, null, null, 1, 1, 1, 0, "per_sku", "moving", "leftover"],
+    );
+
+    const target = createDb(":memory:");
+    const res = await importWorkbook(target, newerBuf);
+
+    expect(res.legacy).toBe(false);
+    expect(res.columnDrift).toContainEqual({ table: "app_settings", added: [], dropped: ["since_removed_column"] });
+    const settings = target.prepare("SELECT owner_share_pct AS p FROM app_settings WHERE id = 1").get() as { p: number };
+    expect(settings.p).toBe(75); // rest of the row still imports fine
+  });
+
+  it("reports no drift for a table whose columns match exactly", async () => {
+    seed(db);
+    const buf = await exportWorkbook(db);
+    const target = createDb(":memory:");
+    const res = await importWorkbook(target, buf);
+    expect(res.columnDrift).toEqual([]);
+  });
+});
+
 describe("TABLES coverage", () => {
   it("covers every user table in the live schema (no silent drift)", () => {
     const live = (createDb(":memory:")

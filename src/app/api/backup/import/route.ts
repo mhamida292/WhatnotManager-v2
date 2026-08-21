@@ -8,8 +8,8 @@ export async function POST(req: NextRequest) {
   if (!(file instanceof File)) return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
   const buf = Buffer.from(await file.arrayBuffer());
   try {
-    const { counts, legacy, skipped } = await importWorkbook(await dbForRequest(), buf);
-    return NextResponse.json({ ok: true, counts, legacy, skipped });
+    const { counts, legacy, skipped, columnDrift } = await importWorkbook(await dbForRequest(), buf);
+    return NextResponse.json({ ok: true, counts, legacy, skipped, columnDrift });
   } catch (e) {
     if (e instanceof BackupError) return NextResponse.json({ error: e.message }, { status: 400 });
     return NextResponse.json({ error: `Restore failed: ${e instanceof Error ? e.message : e}` }, { status: 500 });

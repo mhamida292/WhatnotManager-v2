@@ -71,9 +71,12 @@ describe("legacy import", () => {
       invoices: [["id", "supplier", "invoice_date", "status"], [1, "Acme", "2026-01-01", "draft"]],
     });
     const db = createDb(":memory:");
-    await importWorkbook(db, buf);
+    const res = await importWorkbook(db, buf);
     // `direction` was added later with DEFAULT 'purchase'
     expect((db.prepare("SELECT direction FROM invoices WHERE id = 1").get() as any).direction).toBe("purchase");
+    // and it's reported, not just silently applied
+    const invoicesDrift = res.columnDrift.find((d) => d.table === "invoices");
+    expect(invoicesDrift?.added).toContain("direction");
   });
 
   it("rolls back completely when two aliases collide on one code", async () => {
@@ -174,5 +177,6 @@ describe("legacy import", () => {
     expect(res.legacy).toBe(false);
     expect((target.prepare("SELECT COUNT(*) c FROM inventory_items").get() as any).c).toBe(1);
     expect((target.prepare("SELECT name FROM inventory_items").get() as any).name).toBe("Widget");
+    expect(res.columnDrift).toEqual([]); // exact schema match — nothing to report
   });
 });

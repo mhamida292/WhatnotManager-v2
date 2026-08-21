@@ -47,6 +47,16 @@ export function BackupRestore() {
         text += " Imported from an older backup — Whatnot name mappings were converted to identifiers and SKUs were assigned.";
         if (data.skipped?.length) text += ` Not imported: ${data.skipped.join(", ")}.`;
       }
+      const drift = data.columnDrift as { table: string; added: string[]; dropped: string[] }[] | undefined;
+      if (drift?.length) {
+        const parts = drift.map((d) => {
+          const bits: string[] = [];
+          if (d.added.length) bits.push(`+${d.added.join(", ")} (now at defaults)`);
+          if (d.dropped.length) bits.push(`-${d.dropped.join(", ")} (no longer kept)`);
+          return `${d.table}: ${bits.join("; ")}`;
+        });
+        text += ` This file's schema differs from this version — ${parts.join(" | ")}.`;
+      }
       setMsg(text);
       if (fileRef.current) fileRef.current.value = "";
       router.refresh();
