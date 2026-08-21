@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+/* iOS Safari (and other touch browsers) auto-zoom in when a form control whose
+   font-size is < 16px receives focus, and never zoom back out — the "random"
+   zoom-in on mobile. Force >=16px on touch devices so tapping any field never
+   triggers it. Desktop (fine pointer) keeps the compact text-sm sizing.
+   !important is needed to override Tailwind's text-sm utility on inputs. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

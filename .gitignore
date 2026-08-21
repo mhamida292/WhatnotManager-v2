@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.superpowers/
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/ws/
+.env*
+
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+.worktrees/
