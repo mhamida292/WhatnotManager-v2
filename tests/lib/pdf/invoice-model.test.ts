@@ -7,6 +7,7 @@ const baseSettings: Settings = {
   ownerSharePct: 80, giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: "DirectDealzz",
   invoicePhone: "(313) 555-0142", invoiceAddress: "123 Warehouse Ave", invoiceEmail: "b@x.com",
   invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
+  costingMode: "per_sku", avgMethod: "moving",
 };
 const line = (over: Partial<InvoiceLine>): InvoiceLine => ({
   id: 1, invoiceId: 1, itemId: null, productName: "Widget", displayName: "Widget", quantity: 2, unitCostCents: 100, unitPriceCents: 150, ...over,

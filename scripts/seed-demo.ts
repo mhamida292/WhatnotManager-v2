@@ -57,6 +57,8 @@ updateSettings(db, {
   invoiceShowAddress: true,
   invoiceShowEmail: true,
   whatnotOnly: false,
+  costingMode: "per_sku",
+  avgMethod: "moving",
 });
 
 // 4) Inventory: a lot, per-item costs, and real purchased counts so Remaining shows.
