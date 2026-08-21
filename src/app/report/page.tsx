@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { showSessionLabel } from "@/lib/ui/show-label";
 import { ProductsTable } from "@/components/ProductsTable";
 import { RefundsCard } from "@/components/report/RefundsCard";
+import { PooledShowDetail } from "@/components/report/PooledShowDetail";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export default async function ReportPage() {
 
       {rep.shows.filter((s) => s.saleCount > 0).map((s) => (
         <Card key={s.showId} title={<div className="flex justify-between"><span>{showSessionLabel(s)}</span><span className="normal-case">Net: <Money cents={s.netCents} /></span></div>}>
-          <ProductsTable products={s.products} variant="report" />
+          {rep.pool ? <PooledShowDetail show={s} /> : <ProductsTable products={s.products} variant="report" />}
           <div className="mt-2 text-xs text-slate-500">
             Units sold {s.unitsSold} ·{" "}
             Payout <Money cents={s.payoutCents} /> ·{" "}
