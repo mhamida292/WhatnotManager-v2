@@ -17,7 +17,7 @@ export default async function Dashboard() {
   const db = await dbForRequest();
   const d = dashboardSummary(db);
   const rep = buildLedgerReport(db);
-  const unitsOnHand = listItems(db).reduce((s, i) => s + qtyRemaining(db, i.id), 0);
+  const unitsOnHand = rep.pool ? rep.pool.unitsOnHand : listItems(db).reduce((s, i) => s + qtyRemaining(db, i.id), 0);
 
   const shows = [...rep.shows].sort((a, b) => a.showDate.localeCompare(b.showDate));
   const realShows = shows.filter((s) => s.saleCount > 0);
@@ -50,6 +50,8 @@ export default async function Dashboard() {
         <Stat label="Inventory spend" value={<Money cents={d.netInventorySpendCents} />} />
         <Stat label="Expenses" value={<Money cents={d.totalExpensesCents} />} />
         <Stat label="Units on hand" value={unitsOnHand} />
+        {rep.pool && <Stat label="Pool avg cost/unit" value={<Money cents={rep.pool.currentAvgUnitCostCents} />} />}
+        {rep.pool && <Stat label="Pool value on hand" value={<Money cents={rep.pool.valueOnHandCents} />} />}
       </div>
 
       <div>
