@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { createDb, type DB } from "@/lib/db/connection";
 import { insertItem } from "@/lib/db/inventory";
 import { setAlias } from "@/lib/db/aliases";
-import { updateSettings } from "@/lib/db/settings";
+import { getSettings, updateSettings } from "@/lib/db/settings";
+import { addPurchase } from "@/lib/db/purchases";
 import { parseLedger } from "@/lib/csv/ledger";
 import { saveLedger } from "@/lib/db/ledger";
 import { buildLedgerReport } from "@/lib/calc/ledger-report";
@@ -221,5 +222,43 @@ describe("buildLedgerReport — bundles", () => {
     expect(nonBundle[0].revenueCents).toBe(2200);
     // Show COGS includes the bundle's component cost.
     expect(show.cogsCents).toBe(1040 + nonBundle[0].costCents);
+  });
+});
+
+describe("buildLedgerReport — pooled costing mode", () => {
+  it("prices every sale from the pool average instead of per-product alias resolution", () => {
+    const db2 = createDb(":memory:");
+    const item = insertItem(db2, { name: "Dummy", unitCostCents: 0, qtyPurchased: 0, lotId: null });
+    addPurchase(db2, { itemId: item, purchasedOn: "2026-06-01", quantity: 10, unitCostCents: 200 });
+    updateSettings(db2, { ...getSettings(db2), costingMode: "pooled", avgMethod: "live" });
+    saveLedger(db2, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 12, 2026, 10:14:57 AM","$12.00","L1","O1","Earnings for selling a Item On Screen #1","processing","SALES",""
+"Jun 12, 2026, 10:15:57 AM","$8.00","L2","O2","Earnings for selling a Item On Screen #2","processing","SALES",""`));
+
+    const rep = buildLedgerReport(db2);
+    const show = rep.shows[0];
+    expect(show.products).toEqual([]);
+    expect(show.unitsSold).toBe(2);
+    expect(show.cogsCents).toBe(400); // 2 sales x $2.00 pool avg
+    expect(show.pooledSales).toEqual([
+      { amountCents: 1200, costCents: 200, createdAt: "Jun 12, 2026, 10:14:57 AM" },
+      { amountCents: 800, costCents: 200, createdAt: "Jun 12, 2026, 10:15:57 AM" },
+    ]);
+    expect(rep.totals.revenueCents).toBe(2000); // from pooledSales, not empty products
+    expect(rep.unmappedCount).toBe(0); // no alias resolution attempted at all
+    expect(rep.pool).toEqual({
+      currentAvgUnitCostCents: 200,
+      totalUnitsPurchased: 10,
+      totalSaleCount: 2,
+      unitsOnHand: 8,
+      valueOnHandCents: 1600,
+    });
+  });
+
+  it("leaves per_sku workspaces with pool undefined and unchanged products/cogs behavior", () => {
+    const rep = buildLedgerReport(db); // outer beforeEach db: default costingMode "per_sku"
+    expect(rep.pool).toBeUndefined();
+    expect(rep.shows[0].pooledSales).toBeUndefined();
+    expect(rep.shows[0].products.length).toBeGreaterThan(0);
   });
 });

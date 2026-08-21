@@ -10,6 +10,7 @@ import { getBundleComponentsByTxn } from "@/lib/db/bundles";
 import { secondsToClock } from "./sessions";
 import { ledgerTimeOfDaySeconds } from "@/lib/csv/ledger";
 import { invoiceNumber } from "@/lib/db/invoices";
+import { computePoolCost } from "./pool-cost";
 
 export interface ReportBundleComponent {
   name: string;
@@ -31,6 +32,12 @@ export interface ReportProductLine {
   components?: ReportBundleComponent[];
 }
 
+export interface ReportPooledSale {
+  amountCents: number;
+  costCents: number;
+  createdAt: string;
+}
+
 export interface ReportShow {
   showId: number;
   showDate: string;
@@ -38,6 +45,7 @@ export interface ReportShow {
   timeRange: string;
   dateHasMultipleSessions: boolean;
   products: ReportProductLine[];
+  pooledSales?: ReportPooledSale[];
   giveawayTotalCents: number;   // Whatnot's fee on giveaway orders (already inside payout)
   giveawayCount: number;        // number of items given away this show
   giveawayCostCents: number;    // Σ alloc.count × (packCostCents/packQty), rounded once (merchandise cost, NOT in payout)
@@ -73,6 +81,14 @@ export interface WholesaleRollup {
   owedToYouCents: number;
 }
 
+export interface PoolSummary {
+  currentAvgUnitCostCents: number;
+  totalUnitsPurchased: number;
+  totalSaleCount: number;
+  unitsOnHand: number;
+  valueOnHandCents: number;
+}
+
 export interface LedgerReport {
   shows: ReportShow[];
   giveawayUnitCents: number;
@@ -90,6 +106,7 @@ export interface LedgerReport {
   wholesale: WholesaleRollup;
   unmappedNames: string[];
   unmappedCount: number;
+  pool?: PoolSummary;
 }
 
 export function buildLedgerReport(db: DB): LedgerReport {
@@ -105,6 +122,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
     if (!resolvedCache.has(name)) resolvedCache.set(name, resolveItemId(db, name));
     return resolvedCache.get(name)!;
   };
+  const pool = settings.costingMode === "pooled" ? computePoolCost(db, settings.avgMethod) : null;
   const txns = listLedgerTransactions(db);
   const byShow = new Map<number, typeof txns>();
   for (const t of txns) {
@@ -123,6 +141,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
     const rows = byShow.get(s.id) ?? [];
     const productMap = new Map<string, ReportProductLine>();
     const bundleLines: ReportProductLine[] = [];
+    const pooledSales: ReportPooledSale[] = [];
     const componentsByTxn = getBundleComponentsByTxn(db, s.id);
     let giveaway = 0, giveawayCount = 0, tip = 0, bonus = 0, other = 0, payout = 0, withdrawn = 0, saleCount = 0;
 
@@ -130,7 +149,13 @@ export function buildLedgerReport(db: DB): LedgerReport {
       if (t.kind === "payout") { withdrawn += t.amountCents; continue; }
       payout += t.amountCents;
       if (t.kind === "sale") saleCount += 1;
-      if (t.kind === "sale" && componentsByTxn.has(t.id)) {
+      if (pool && t.kind === "sale") {
+        pooledSales.push({
+          amountCents: t.amountCents,
+          costCents: pool.costBySaleTxnId.get(t.id) ?? 0,
+          createdAt: t.createdAt,
+        });
+      } else if (t.kind === "sale" && componentsByTxn.has(t.id)) {
         const comps = componentsByTxn.get(t.id)!;
         const components = comps.map((c) => {
           const unitCostCents = itemCost.get(c.itemId) ?? 0;
@@ -164,9 +189,9 @@ export function buildLedgerReport(db: DB): LedgerReport {
       else if (t.kind === "other") other += t.amountCents;
     }
 
-    const products = [...productMap.values(), ...bundleLines].sort((a, b) => a.productName.localeCompare(b.productName));
-    const unitsSold = products.reduce((sum, p) => sum + p.qty, 0);
-    const cogsCents = products.reduce((sum, p) => sum + p.costCents, 0);
+    const products = pool ? [] : [...productMap.values(), ...bundleLines].sort((a, b) => a.productName.localeCompare(b.productName));
+    const unitsSold = pool ? saleCount : products.reduce((sum, p) => sum + p.qty, 0);
+    const cogsCents = pool ? pooledSales.reduce((sum, ps) => sum + ps.costCents, 0) : products.reduce((sum, p) => sum + p.costCents, 0);
     // Each giveaway costs us a unit of merchandise computed from per-show allocations.
     // This is a real cost NOT present in the ledger (the ledger only has Whatnot's small fee).
     const allocs = getAllocations(db, s.id);
@@ -185,6 +210,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
       timeRange,
       dateHasMultipleSessions: (dateCounts.get(s.showDate) ?? 0) > 1,
       products,
+      pooledSales: pool ? pooledSales : undefined,
       giveawayTotalCents: giveaway, giveawayCount, giveawayCostCents, giveawayUnallocated,
       tipTotalCents: tip, bonusTotalCents: bonus, otherTotalCents: other,
       payoutCents: payout, withdrawnToBankCents: withdrawn, cogsCents, shippingSuppliesCents: s.shippingSuppliesCents, netCents, unitsSold, saleCount,
@@ -210,7 +236,9 @@ export function buildLedgerReport(db: DB): LedgerReport {
     owedToYouCents: wholesaleInvoices.filter((w) => !w.paid).reduce((s, w) => s + w.revenueCents, 0),
   };
 
-  let revenueCents = shows.reduce((sum, s) => sum + s.products.reduce((a, p) => a + p.revenueCents, 0), 0);
+  let revenueCents = shows.reduce((sum, s) => sum + (pool
+    ? (s.pooledSales ?? []).reduce((a, ps) => a + ps.amountCents, 0)
+    : s.products.reduce((a, p) => a + p.revenueCents, 0)), 0);
   let cogsCents = shows.reduce((sum, s) => sum + s.cogsCents, 0);
   const giveawayCostCents = shows.reduce((sum, s) => sum + s.giveawayCostCents, 0);
   const shippingSuppliesCents = shows.reduce((sum, s) => sum + s.shippingSuppliesCents, 0);
@@ -226,6 +254,16 @@ export function buildLedgerReport(db: DB): LedgerReport {
 
   const { ownerShareCents, partnerShareCents } = splitProfit(netCents, settings.ownerSharePct);
 
+  const poolSummary: PoolSummary | undefined = pool
+    ? {
+        currentAvgUnitCostCents: pool.currentAvgUnitCostCents,
+        totalUnitsPurchased: pool.totalUnitsPurchased,
+        totalSaleCount: pool.totalSaleCount,
+        unitsOnHand: pool.totalUnitsPurchased - pool.totalSaleCount,
+        valueOnHandCents: (pool.totalUnitsPurchased - pool.totalSaleCount) * pool.currentAvgUnitCostCents,
+      }
+    : undefined;
+
   return {
     shows,
     giveawayUnitCents: settings.giveawayUnitCents,
@@ -233,5 +271,6 @@ export function buildLedgerReport(db: DB): LedgerReport {
     wholesale,
     unmappedNames: [...unmapped].sort(),
     unmappedCount: unmapped.size,
+    pool: poolSummary,
   };
 }
