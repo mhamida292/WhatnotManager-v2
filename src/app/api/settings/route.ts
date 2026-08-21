@@ -17,8 +17,10 @@ export async function PUT(req: NextRequest) {
   }
   const db = await dbForRequest();
   const currentSettings = getSettings(db);
-  const { giveawayUnitCents, whatnotOnly: wasWhatnotOnly } = currentSettings;
+  const { giveawayUnitCents, whatnotOnly: wasWhatnotOnly, costingMode: wasCostingMode, avgMethod: wasAvgMethod } = currentSettings;
   const whatnotOnly = typeof body.whatnotOnly === "boolean" ? body.whatnotOnly : wasWhatnotOnly;
+  const costingMode = body.costingMode === "per_sku" || body.costingMode === "pooled" ? body.costingMode : wasCostingMode;
+  const avgMethod = body.avgMethod === "live" || body.avgMethod === "moving" ? body.avgMethod : wasAvgMethod;
   if (whatnotOnly && !wasWhatnotOnly) {
     const blockers = itemsWithWarehouseStock(db);
     if (blockers.length > 0) {
@@ -37,7 +39,7 @@ export async function PUT(req: NextRequest) {
     invoiceShowPhone: body.invoiceShowPhone !== false,
     invoiceShowAddress: body.invoiceShowAddress !== false,
     invoiceShowEmail: body.invoiceShowEmail !== false,
-    whatnotOnly,
+    whatnotOnly, costingMode, avgMethod,
   });
   return NextResponse.json({ ok: true });
 }

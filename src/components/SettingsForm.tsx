@@ -17,6 +17,8 @@ export function SettingsForm({ initial }: { initial: Settings }) {
   const [showAddress, setShowAddress] = useState(initial.invoiceShowAddress);
   const [showEmail, setShowEmail] = useState(initial.invoiceShowEmail);
   const [whatnotOnly, setWhatnotOnly] = useState(initial.whatnotOnly);
+  const [costingMode, setCostingMode] = useState<Settings["costingMode"]>(initial.costingMode);
+  const [avgMethod, setAvgMethod] = useState<Settings["avgMethod"]>(initial.avgMethod);
   const [gateError, setGateError] = useState<string | null>(null);
   const [blockers, setBlockers] = useState<{ id: number; name: string; qty: number }[]>([]);
   const [saved, setSaved] = useState(false);
@@ -37,6 +39,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
         invoiceEmail: invoiceEmail.trim() || null,
         invoiceShowPhone: showPhone, invoiceShowAddress: showAddress, invoiceShowEmail: showEmail,
         whatnotOnly,
+        costingMode, avgMethod,
       }),
     });
     if (res.status === 409) {
@@ -127,6 +130,28 @@ export function SettingsForm({ initial }: { initial: Settings }) {
             </Button>
           )}
           {sweepMsg && <p className="text-sm text-brand-700">{sweepMsg}</p>}
+        </div>
+
+        <div className="space-y-3 border-t border-line pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Costing</p>
+          <div>
+            <label className="block font-medium text-slate-700">Costing mode</label>
+            <select className={`mt-1 w-full ${INPUT_CLASS}`} value={costingMode}
+              onChange={(e) => { setCostingMode(e.target.value as Settings["costingMode"]); setSaved(false); }}>
+              <option value="per_sku">Per-SKU — costs each sale via product mapping</option>
+              <option value="pooled">Pooled — one blended cost across all purchased stock (for mystery/random-pull streams)</option>
+            </select>
+          </div>
+          {costingMode === "pooled" && (
+            <div>
+              <label className="block font-medium text-slate-700">Pool average method</label>
+              <select className={`mt-1 w-full ${INPUT_CLASS}`} value={avgMethod}
+                onChange={(e) => { setAvgMethod(e.target.value as Settings["avgMethod"]); setSaved(false); }}>
+                <option value="moving">Moving average — a show's cost never changes once booked</option>
+                <option value="live">Live average — all-time blended, shifts past shows when you buy more</option>
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3 border-t border-line pt-4">
