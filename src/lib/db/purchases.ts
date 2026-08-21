@@ -10,6 +10,25 @@ export interface Purchase {
   invoiceId: number | null;
 }
 
+export interface PurchaseRow {
+  id: number;
+  purchasedOn: string | null;
+  quantity: number;
+  unitCostCents: number;
+}
+
+/** Every purchase batch across every item, workspace-wide — the raw feed for
+ *  pool-average costing (src/lib/calc/pool-cost.ts). NULL purchase dates sort
+ *  first (treated as earliest-possible), then oldest-first, then by id. */
+export function listAllPurchases(db: DB): PurchaseRow[] {
+  return db
+    .prepare(
+      `SELECT id, purchased_on AS purchasedOn, quantity, unit_cost_cents AS unitCostCents
+       FROM item_purchases ORDER BY purchased_on IS NULL DESC, purchased_on, id`
+    )
+    .all() as PurchaseRow[];
+}
+
 /** Recompute an item's derived totals from its purchase batches:
  *  qty_purchased = sum of quantities, unit_cost_cents = weighted average
  *  (rounded; 0 when there are no units). Keeps the report/Remaining math working. */

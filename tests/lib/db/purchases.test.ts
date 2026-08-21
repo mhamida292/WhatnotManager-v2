@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createDb, type DB, backfillPurchases } from "@/lib/db/connection";
 import { insertItem, createItemWithFirstPurchase } from "@/lib/db/inventory";
-import { addPurchase, listPurchases, recomputeItemTotals, updatePurchase, deletePurchase, itemSpendCents, getPurchaseItemId } from "@/lib/db/purchases";
+import { addPurchase, listPurchases, listAllPurchases, recomputeItemTotals, updatePurchase, deletePurchase, itemSpendCents, getPurchaseItemId } from "@/lib/db/purchases";
 
 let db: DB;
 beforeEach(() => { db = createDb(":memory:"); });
@@ -106,5 +106,18 @@ describe("item purchases", () => {
     addPurchase(db, { itemId: id, purchasedOn: null, quantity: 3, unitCostCents: 101 });
     // avg rounds to 101 (round(603/6)=101) -> avg*qty = 606, but exact spend is 603.
     expect(itemSpendCents(db, id)).toBe(603);
+  });
+
+  it("listAllPurchases returns every batch across all items, NULL dates first then oldest-first", () => {
+    const a = insertItem(db, { name: "A", unitCostCents: 0, qtyPurchased: 0, lotId: null });
+    const b = insertItem(db, { name: "B", unitCostCents: 0, qtyPurchased: 0, lotId: null });
+    addPurchase(db, { itemId: a, purchasedOn: "2026-06-09", quantity: 5, unitCostCents: 180 });
+    addPurchase(db, { itemId: b, purchasedOn: null, quantity: 2, unitCostCents: 50 });
+    addPurchase(db, { itemId: a, purchasedOn: "2026-03-02", quantity: 12, unitCostCents: 150 });
+
+    const rows = listAllPurchases(db);
+    expect(rows.map((r) => r.purchasedOn)).toEqual([null, "2026-03-02", "2026-06-09"]);
+    expect(rows.map((r) => r.quantity)).toEqual([2, 12, 5]);
+    expect(rows.map((r) => r.unitCostCents)).toEqual([50, 150, 180]);
   });
 });
