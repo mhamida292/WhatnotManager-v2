@@ -61,6 +61,8 @@ export function migrate(db: DB): void {
   if (!scols.includes("invoice_show_address")) db.exec("ALTER TABLE app_settings ADD COLUMN invoice_show_address INTEGER NOT NULL DEFAULT 1");
   if (!scols.includes("invoice_show_email")) db.exec("ALTER TABLE app_settings ADD COLUMN invoice_show_email INTEGER NOT NULL DEFAULT 1");
   if (!scols.includes("whatnot_only")) db.exec("ALTER TABLE app_settings ADD COLUMN whatnot_only INTEGER NOT NULL DEFAULT 0");
+  if (!scols.includes("costing_mode")) db.exec("ALTER TABLE app_settings ADD COLUMN costing_mode TEXT NOT NULL DEFAULT 'per_sku'");
+  if (!scols.includes("avg_method")) db.exec("ALTER TABLE app_settings ADD COLUMN avg_method TEXT NOT NULL DEFAULT 'moving'");
   const shcols = (db.prepare("PRAGMA table_info(shows)").all() as { name: string }[]).map((c) => c.name);
   if (!shcols.includes("session_seq")) {
     db.exec("ALTER TABLE shows ADD COLUMN session_seq INTEGER NOT NULL DEFAULT 0");

@@ -5,7 +5,7 @@ import { insertItem } from "@/lib/db/inventory";
 import { insertExpense } from "@/lib/db/expenses";
 import { parseLedger } from "@/lib/csv/ledger";
 import { saveLedger } from "@/lib/db/ledger";
-import { updateSettings } from "@/lib/db/settings";
+import { getSettings, updateSettings } from "@/lib/db/settings";
 import { TABLES, exportWorkbook, importWorkbook, BackupError } from "@/lib/backup/workbook";
 
 let db: DB;
@@ -48,7 +48,7 @@ function seed(db: DB) {
   saveLedger(db, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
 "Jun 14, 2026, 09:00:00 AM","$100.00","L1","O1","Earnings for selling a Cheese Squishy #3","completed","SALES","a"
 "Jun 14, 2026, 05:00:00 PM","-$534.39","","","Payout to bank","completed","PAYOUT","b"`));
-  updateSettings(db, { ownerSharePct: 75, giveawayUnitCents: 400, defaultShippingSuppliesCents: 0, businessName: "DirectDealzz" } as any);
+  updateSettings(db, { ...getSettings(db), ownerSharePct: 75, giveawayUnitCents: 400, defaultShippingSuppliesCents: 0, businessName: "DirectDealzz" });
 }
 
 describe("importWorkbook", () => {

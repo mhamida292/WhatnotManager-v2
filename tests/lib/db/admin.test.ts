@@ -23,7 +23,8 @@ describe("resetApp", () => {
 "Jun 12, 2026, 10:14:57 AM","$0.49","L1","O1","Earnings for selling a Cheese Squishy #3","processing","SALES",""`));
     updateSettings(db, { ownerSharePct: 70, giveawayUnitCents: 400, defaultShippingSuppliesCents: 250, businessName: null,
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
-      invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false });
+      invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
+      costingMode: "per_sku", avgMethod: "moving" });
 
     resetApp(db);
 
@@ -34,7 +35,8 @@ describe("resetApp", () => {
     expect(listLedgerTransactions(db)).toHaveLength(0);
     expect(getSettings(db)).toEqual({ ownerSharePct: 80, giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: null,
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
-      invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false });
+      invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
+      costingMode: "per_sku", avgMethod: "moving" });
   });
 
   it("keeps the single settings row (does not delete it)", () => {

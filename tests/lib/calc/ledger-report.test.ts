@@ -74,7 +74,8 @@ describe("buildLedgerReport", () => {
   it("computes grand totals and owner share from the configured split", () => {
     updateSettings(db, { ownerSharePct: 80, giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: null,
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
-      invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false });
+      invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
+      costingMode: "per_sku", avgMethod: "moving" });
     const rep = buildLedgerReport(db);
     expect(rep.totals.giveawayCostCents).toBe(0);  // no allocations → $0
     expect(rep.totals.netCents).toBe(-79);          // 171 - 250 - 0
@@ -86,7 +87,8 @@ describe("buildLedgerReport", () => {
   it("scales giveaway cost with allocations (not the unit cost setting)", () => {
     updateSettings(db, { ownerSharePct: 80, giveawayUnitCents: 700, defaultShippingSuppliesCents: 0, businessName: null,
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
-      invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false });
+      invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
+      costingMode: "per_sku", avgMethod: "moving" });
     const rep = buildLedgerReport(db);
     expect(rep.giveawayUnitCents).toBe(700);
     expect(rep.shows[0].giveawayCostCents).toBe(0); // 1 giveaway but no allocations → $0

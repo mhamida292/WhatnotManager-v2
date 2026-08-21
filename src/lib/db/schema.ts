@@ -136,7 +136,9 @@ CREATE TABLE IF NOT EXISTS app_settings (
   invoice_show_phone INTEGER NOT NULL DEFAULT 1,
   invoice_show_address INTEGER NOT NULL DEFAULT 1,
   invoice_show_email INTEGER NOT NULL DEFAULT 1,
-  whatnot_only INTEGER NOT NULL DEFAULT 0
+  whatnot_only INTEGER NOT NULL DEFAULT 0,
+  costing_mode TEXT NOT NULL DEFAULT 'per_sku' CHECK (costing_mode IN ('per_sku','pooled')),
+  avg_method TEXT NOT NULL DEFAULT 'moving' CHECK (avg_method IN ('moving','live'))
 );
 
 INSERT OR IGNORE INTO app_settings (id, owner_share_pct, giveaway_unit_cents, default_shipping_supplies_cents)

@@ -16,7 +16,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Invalid settings values" }, { status: 400 });
   }
   const db = await dbForRequest();
-  const { giveawayUnitCents, whatnotOnly: wasWhatnotOnly } = getSettings(db);
+  const currentSettings = getSettings(db);
+  const { giveawayUnitCents, whatnotOnly: wasWhatnotOnly } = currentSettings;
   const whatnotOnly = typeof body.whatnotOnly === "boolean" ? body.whatnotOnly : wasWhatnotOnly;
   if (whatnotOnly && !wasWhatnotOnly) {
     const blockers = itemsWithWarehouseStock(db);
@@ -30,6 +31,7 @@ export async function PUT(req: NextRequest) {
   const invoiceAddress = trimOrNull(body.invoiceAddress);
   const invoiceEmail = trimOrNull(body.invoiceEmail);
   updateSettings(db, {
+    ...currentSettings,
     ownerSharePct, giveawayUnitCents, defaultShippingSuppliesCents, businessName,
     invoicePhone, invoiceAddress, invoiceEmail,
     invoiceShowPhone: body.invoiceShowPhone !== false,

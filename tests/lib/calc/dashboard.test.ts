@@ -43,7 +43,8 @@ ${SALE("Earnings for selling a Cheese Squishy #3", "$12.00", "1")}`));
 ${SALE("Earnings for selling a Mystery Dumpling #1", "$10.00", "9")}`));
     updateSettings(db, { ownerSharePct: 70, giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: null,
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
-      invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false });
+      invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
+      costingMode: "per_sku", avgMethod: "moving" });
 
     const d = dashboardSummary(db);
     expect(d.totalNetProfitCents).toBe(1000);
