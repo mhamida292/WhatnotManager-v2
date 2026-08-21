@@ -30,8 +30,8 @@ export function NewInvoiceButton() {
 
   return (
     <div className="flex gap-2 flex-wrap">
+      <Button onClick={createPurchase}>+ New purchase</Button>
       <Button onClick={createSale}>+ New sales invoice</Button>
-      <Button variant="secondary" onClick={createPurchase}>+ New purchase</Button>
     </div>
   );
 }

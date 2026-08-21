@@ -21,6 +21,8 @@ export function InvoiceEditor({ invoice, lines: initialLines, items }: {
   const [form, setForm] = useState({ itemId: "", name: "", qty: "", cost: "", packs: "", perPack: "" });
   const [chargeForm, setChargeForm] = useState({ name: "", amount: "" });
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", qty: "", cost: "" });
 
   const total = lines.reduce(
     (s, l) => s + l.quantity * (isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents),
@@ -103,6 +105,46 @@ export function InvoiceEditor({ invoice, lines: initialLines, items }: {
     router.refresh();
   }
 
+  function startEdit(l: InvoiceLine) {
+    setEditingId(l.id);
+    setEditForm({
+      name: l.displayName,
+      qty: String(l.quantity),
+      cost: String((isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents) / 100),
+    });
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(l: InvoiceLine) {
+    const qty = Math.trunc(Number(editForm.qty));
+    const cents = toCents(Number(editForm.cost));
+    const name = editForm.name.trim();
+    if (!name || !(qty >= 1) || !(cents >= 0)) { setError("Enter a valid name, quantity ≥ 1, and cost."); return; }
+    setError(null);
+    const res = await fetch(`/api/invoices/${invoice.id}/lines`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: l.id, itemId: l.itemId, productName: name, quantity: qty,
+        unitCostCents: isSale ? l.unitCostCents : cents,
+        unitPriceCents: isSale ? cents : l.unitPriceCents,
+      }),
+    });
+    if (!res.ok) { setError("Could not save changes."); return; }
+    setLines(lines.map((x) => (x.id === l.id
+      ? {
+          ...x, productName: name, displayName: name, quantity: qty,
+          unitCostCents: isSale ? x.unitCostCents : cents,
+          unitPriceCents: isSale ? cents : x.unitPriceCents,
+        }
+      : x)));
+    setEditingId(null);
+    router.refresh();
+  }
+
   async function removeLine(id: number) {
     const res = await fetch(`/api/invoices/${invoice.id}/lines`, {
       method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }),
@@ -140,15 +182,43 @@ export function InvoiceEditor({ invoice, lines: initialLines, items }: {
           )}
           {lines.map((l) => (
             <tr key={l.id} className="border-t border-line">
-              <td className="py-1.5">{l.displayName}</td>
-              <td className="py-1.5 text-right tabular-nums">{l.kind === "charge" ? "—" : l.quantity}</td>
-              <td className="py-1.5 text-right tabular-nums">
-                {l.kind === "charge" ? "—" : <Money cents={isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents} />}
-              </td>
-              <td className="py-1.5 text-right tabular-nums">
-                <Money cents={l.kind === "charge" ? (isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents) : l.quantity * (isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents)} />
-              </td>
-              <td className="py-1.5 text-right"><button onClick={() => removeLine(l.id)} className="text-xs text-red-600 hover:underline">✕</button></td>
+              {editingId === l.id ? (
+                <>
+                  <td className="py-1.5">
+                    <input className={`${INPUT_CLASS} text-sm`} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                  </td>
+                  <td className="py-1.5 text-right">
+                    {l.kind === "charge" ? "—" : (
+                      <input type="number" min="0" className={`w-16 ${INPUT_CLASS} text-right text-sm`} value={editForm.qty} onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })} />
+                    )}
+                  </td>
+                  <td className="py-1.5 text-right">
+                    {l.kind === "charge" ? "—" : (
+                      <input type="number" step="0.01" min="0" className={`w-20 ${INPUT_CLASS} text-right text-sm`} value={editForm.cost} onChange={(e) => setEditForm({ ...editForm, cost: e.target.value })} />
+                    )}
+                  </td>
+                  <td className="py-1.5 text-right text-slate-400">—</td>
+                  <td className="py-1.5 text-right whitespace-nowrap">
+                    <button onClick={() => saveEdit(l)} className="mr-2 text-xs text-emerald-700 hover:underline">Save</button>
+                    <button onClick={cancelEdit} className="text-xs text-slate-500 hover:underline">Cancel</button>
+                  </td>
+                </>
+              ) : (
+                <>
+                  <td className="py-1.5">{l.displayName}</td>
+                  <td className="py-1.5 text-right tabular-nums">{l.kind === "charge" ? "—" : l.quantity}</td>
+                  <td className="py-1.5 text-right tabular-nums">
+                    {l.kind === "charge" ? "—" : <Money cents={isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents} />}
+                  </td>
+                  <td className="py-1.5 text-right tabular-nums">
+                    <Money cents={l.kind === "charge" ? (isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents) : l.quantity * (isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents)} />
+                  </td>
+                  <td className="py-1.5 text-right whitespace-nowrap">
+                    {l.kind !== "charge" && <button onClick={() => startEdit(l)} className="mr-2 text-xs text-brand-700 hover:underline">Edit</button>}
+                    <button onClick={() => removeLine(l.id)} className="text-xs text-red-600 hover:underline">✕</button>
+                  </td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>
