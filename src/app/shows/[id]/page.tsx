@@ -64,12 +64,14 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
           <p className="mt-3 text-sm text-amber-700">⚠ Giveaways not entered yet — counted as $0.</p>
         )}
       </Card>
-      <Card title="Bundles">
-        <p className="mb-3 text-sm text-slate-600">
-          Combined an on-screen bundle from several items? Pick its sale line and list what went into it — profit = revenue − component cost.
-        </p>
-        <BundleEditor showId={show.showId} />
-      </Card>
+      {!rep.pool && (
+        <Card title="Bundles">
+          <p className="mb-3 text-sm text-slate-600">
+            Combined an on-screen bundle from several items? Pick its sale line and list what went into it — profit = revenue − component cost.
+          </p>
+          <BundleEditor showId={show.showId} />
+        </Card>
+      )}
       <div className="border-t border-line pt-4">
         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Danger zone</p>
         <DeleteShowButton id={show.showId} showDate={show.showDate} impact={impact} />

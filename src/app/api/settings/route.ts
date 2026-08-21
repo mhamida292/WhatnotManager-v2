@@ -33,7 +33,6 @@ export async function PUT(req: NextRequest) {
   const invoiceAddress = trimOrNull(body.invoiceAddress);
   const invoiceEmail = trimOrNull(body.invoiceEmail);
   updateSettings(db, {
-    ...currentSettings,
     ownerSharePct, giveawayUnitCents, defaultShippingSuppliesCents, businessName,
     invoicePhone, invoiceAddress, invoiceEmail,
     invoiceShowPhone: body.invoiceShowPhone !== false,

@@ -6,7 +6,6 @@ export function PooledShowDetail({ show }: { show: ReportShow }) {
   return (
     <div className="text-sm">
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-slate-700">
-        <span>Units sold <b>{show.unitsSold}</b></span>
         <span>Pool COGS <b><Money cents={show.cogsCents} /></b></span>
       </div>
       {sales.length > 0 && (

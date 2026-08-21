@@ -29,7 +29,7 @@ export default async function InventoryPage() {
   const active = items.filter((i) => i.archivedAt == null);
   const archived = items.filter((i) => i.archivedAt != null);
   const seen = seenProductNames(db);
-  const { unmappedCount, unmappedNames } = buildLedgerReport(db);
+  const { unmappedCount, unmappedNames, pool } = buildLedgerReport(db);
   const mapSuggestions = buildMapSuggestions(unmappedNames, active.map((i) => ({ id: i.id, name: i.name })));
   // Stat cards reflect ALL items, archived included — archiving is purely
   // organizational (it hides items from the list/count/mapping, never changes
@@ -43,9 +43,19 @@ export default async function InventoryPage() {
       <PageHeader title="Inventory" subtitle="Items, costs, and what's left to sell"
         action={<Button href="/inventory/count">Count merchandise</Button>} />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="In stock" value={`${stock.units} units`} />
-        <Stat label="In-stock value" value={<Money cents={stock.valueCents} />} />
-        <Stat label="Products in stock" value={`${stock.productsInStock} of ${stock.totalProducts}`} />
+        {pool ? (
+          <>
+            <Stat label="Units purchased" value={pool.totalUnitsPurchased} />
+            <Stat label="Units sold" value={pool.totalSaleCount} />
+            <Stat label="Units on hand" value={pool.unitsOnHand} />
+          </>
+        ) : (
+          <>
+            <Stat label="In stock" value={`${stock.units} units`} />
+            <Stat label="In-stock value" value={<Money cents={stock.valueCents} />} />
+            <Stat label="Products in stock" value={`${stock.productsInStock} of ${stock.totalProducts}`} />
+          </>
+        )}
         <Stat label="True net inventory spend" value={<Money cents={spend} />} />
       </div>
 
