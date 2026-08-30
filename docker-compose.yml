@@ -1,12 +1,15 @@
 services:
   warehouse:
     build: .
-    image: warehouse-manager
-    container_name: warehouse-manager
-    # Host 39390 -> container 3000. Change the left number to use a different
+    image: whatnotmanager-v2
+    # Distinct from the older `warehouse-manager` container, which stays running
+    # alongside this one. Both the name and the host port below must not collide
+    # with it.
+    container_name: whatnotmanager-v2
+    # Host 4342 -> container 3000. Change the left number to use a different
     # homelab port.
     ports:
-      - "39390:3000"
+      - "4342:3000"
     # Persist the data dir on the host: holds users.db (the account registry)
     # and ws/<userId>.db (the shared business workspace, ws/0.db). Gitignored.
     volumes:
