@@ -10,7 +10,7 @@ const baseSettings: Settings = {
   costingMode: "per_sku", avgMethod: "moving",
 };
 const line = (over: Partial<InvoiceLine>): InvoiceLine => ({
-  id: 1, invoiceId: 1, itemId: null, productName: "Widget", displayName: "Widget", quantity: 2, unitCostCents: 100, unitPriceCents: 150, ...over,
+  id: 1, invoiceId: 1, itemId: null, productName: "Widget", displayName: "Widget", quantity: 2, unitCostCents: 100, unitPriceCents: 150, kind: "item", ...over,
 });
 const inv = (over: Partial<Invoice>): Invoice => ({
   id: 7, number: "INV-0007", direction: "sale", supplier: null, customer: "FE Wholesale",

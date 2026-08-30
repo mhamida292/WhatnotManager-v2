@@ -12,6 +12,9 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      - APP_SECRET=${APP_SECRET:-change-me-to-a-long-random-string}
+      # Required, no default: a shared fallback secret would be public (it lives in
+      # this repo), making session cookies forgeable. Compose refuses to start
+      # without it. Set it in a .env file next to this one -- see .env.example.
+      - APP_SECRET=${APP_SECRET:?set APP_SECRET in .env (see .env.example) -- generate one with `openssl rand -hex 32`}
       - DATA_DIR=/app/data
     restart: unless-stopped

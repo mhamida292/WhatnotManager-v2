@@ -43,7 +43,12 @@ After the admin account exists, they can manage other users at **Settings → Us
 
 Set these environment variables:
 
-- **`APP_SECRET`** — A long random string used to sign session cookies. If not set, a random secret is generated once and persisted in `data/users.db` (sessions survive restarts). For production, set this explicitly to a secure value.
+- **`APP_SECRET`** — A long random string used to sign session cookies. **Required under Docker Compose**, which refuses to start without it; copy `.env.example` to `.env` and fill it in:
+
+      cp .env.example .env
+      openssl rand -hex 32        # paste the output as APP_SECRET
+
+  If the variable is left unset entirely (e.g. `npm run dev`), a random secret is generated once and persisted in `data/users.db`, so sessions survive restarts. A placeholder or under-16-character value is rejected outright rather than silently accepted — sessions are `HMAC(userId, APP_SECRET)`, so a guessable secret lets anyone who can reach the port forge an admin cookie. Changing the value invalidates all existing sessions (everyone logs in again).
 - **`DATA_DIR`** — Override the data directory path (default: `<cwd>/data`).
 
 ### Authentication Notes

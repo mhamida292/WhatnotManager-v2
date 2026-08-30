@@ -6,6 +6,7 @@ data/*.db-wal
 data/*.db-shm
 data/ws/
 .env*
+!.env.example
 
 tsconfig.tsbuildinfo
 next-env.d.ts
