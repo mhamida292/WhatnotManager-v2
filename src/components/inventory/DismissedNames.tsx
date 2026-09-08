@@ -12,7 +12,7 @@ async function restore(productName: string) {
   location.reload();
 }
 
-/** The undo for "Not a product". Collapsed by default — these are names the user
+/** The undo for Dismiss. Collapsed by default — these are names the user
  *  already decided about, so they shouldn't compete with the ones still needing a
  *  decision. Each row names the revenue riding on it, because dismissing hides the
  *  prompt without giving those sales a cost. */

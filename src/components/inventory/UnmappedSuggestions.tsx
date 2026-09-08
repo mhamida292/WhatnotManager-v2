@@ -60,7 +60,7 @@ function Row({ s, items, idx }: { s: MapSuggestion; items: { id: number; name: s
           onClick={() => dismiss(s.productName)}
           className="text-xs text-slate-400 underline-offset-2 hover:text-slate-700 hover:underline"
         >
-          Not a product
+          Dismiss
         </button>
       </div>
     </div>
