@@ -39,10 +39,13 @@ export function PostReviewModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white p-4 shadow-xl">
-        <h2 className="text-lg font-semibold">Confirm items before posting</h2>
-        <p className="mt-1 text-sm text-slate-500">{reviews.length} line(s) aren&apos;t linked to an inventory item yet.</p>
-        <div className="mt-3 space-y-3">
+      {/* Header and footer stay put; only the line list scrolls, so Confirm is always reachable. */}
+      <div className="flex max-h-full w-full max-w-lg flex-col rounded-xl bg-white p-4 shadow-xl">
+        <div className="shrink-0">
+          <h2 className="text-lg font-semibold">Confirm items before posting</h2>
+          <p className="mt-1 text-sm text-slate-500">{reviews.length} line(s) aren&apos;t linked to an inventory item yet.</p>
+        </div>
+        <div className="mt-3 flex-1 space-y-3 overflow-y-auto">
           {reviews.map((r) => {
             const c = choice[r.lineId];
             const pct = Math.round(r.score * 100);
@@ -70,7 +73,7 @@ export function PostReviewModal({
             );
           })}
         </div>
-        <div className="mt-4 flex justify-end gap-2">
+        <div className="mt-4 flex shrink-0 justify-end gap-2">
           <Button variant="secondary" onClick={onCancel}>Cancel</Button>
           <Button disabled={!ready} onClick={() => onConfirm(build())}>Confirm all &amp; post</Button>
         </div>
