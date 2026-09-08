@@ -95,6 +95,10 @@ export function migrate(db: DB): void {
   // Retired 2026-07-27: the brother cost-sharing concept was removed. The table
   // was unreachable (no writer) and its rows contributed 0 to every calculation.
   migratePayrollShifts(db);
+  // After the reshape, never before: on an existing file SCHEMA has already run
+  // against the old table, so this is the first point work_date is guaranteed
+  // to exist.
+  db.exec("CREATE INDEX IF NOT EXISTS idx_payroll_work_date ON payroll_entries(work_date)");
   db.prepare("DROP TABLE IF EXISTS brother_transactions").run();
 }
 

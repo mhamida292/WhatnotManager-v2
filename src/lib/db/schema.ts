@@ -1,5 +1,11 @@
 /** Split out of SCHEMA so migratePayrollShifts recreates the table from the very
- *  same DDL a fresh database gets, instead of a copy that could drift from it. */
+ *  same DDL a fresh database gets, instead of a copy that could drift from it.
+ *
+ *  Table only, no index: SCHEMA runs BEFORE migrate() on an existing file, where
+ *  CREATE TABLE IF NOT EXISTS is a no-op against the old pay-period table. An
+ *  index over work_date here would then be built against a table that does not
+ *  have that column yet and abort the open. migrate() creates it after the
+ *  reshape instead. */
 export const PAYROLL_SCHEMA = `
 CREATE TABLE IF NOT EXISTS payroll_entries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -12,7 +18,6 @@ CREATE TABLE IF NOT EXISTS payroll_entries (
   amount_cents INTEGER NOT NULL,
   note TEXT
 );
-CREATE INDEX IF NOT EXISTS idx_payroll_work_date ON payroll_entries(work_date);
 `;
 
 export const SCHEMA = `
