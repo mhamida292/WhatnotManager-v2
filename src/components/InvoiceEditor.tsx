@@ -164,72 +164,76 @@ export function InvoiceEditor({ invoice, lines: initialLines, items }: {
         <input className={INPUT_CLASS} placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveHeader} />
       </div>
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-xs uppercase text-slate-400">
-            <th className="py-1">Product</th><th className="py-1 text-right">Qty</th>
-            <th className="py-1 text-right">{isSale ? "Unit price" : "Unit cost"}</th>
-            <th className="py-1 text-right">Total</th><th />
-          </tr>
-        </thead>
-        <tbody>
-          {lines.length === 0 && (
-            <tr className="border-t border-line">
-              <td colSpan={5} className="py-4 text-center text-slate-400">
-                No lines yet — add one below.
-              </td>
+      {/* The edit row's fixed-width qty/price inputs outrun a phone; scroll the
+          table alone so the page itself never drifts sideways. */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[34rem] text-sm">
+          <thead>
+            <tr className="text-left text-xs uppercase text-slate-400">
+              <th className="py-1">Product</th><th className="py-1 text-right">Qty</th>
+              <th className="py-1 text-right">{isSale ? "Unit price" : "Unit cost"}</th>
+              <th className="py-1 text-right">Total</th><th />
             </tr>
-          )}
-          {lines.map((l) => (
-            <tr key={l.id} className="border-t border-line">
-              {editingId === l.id ? (
-                <>
-                  <td className="py-1.5">
-                    <input className={`${INPUT_CLASS} text-sm`} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
-                  </td>
-                  <td className="py-1.5 text-right">
-                    {l.kind === "charge" ? "—" : (
-                      <input type="number" min="0" className={`w-16 ${INPUT_CLASS} text-right text-sm`} value={editForm.qty} onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })} />
-                    )}
-                  </td>
-                  <td className="py-1.5 text-right">
-                    {l.kind === "charge" ? "—" : (
-                      <input type="number" step="0.01" min="0" className={`w-20 ${INPUT_CLASS} text-right text-sm`} value={editForm.cost} onChange={(e) => setEditForm({ ...editForm, cost: e.target.value })} />
-                    )}
-                  </td>
-                  <td className="py-1.5 text-right text-slate-400">—</td>
-                  <td className="py-1.5 text-right whitespace-nowrap">
-                    <button onClick={() => saveEdit(l)} className="mr-2 text-xs text-emerald-700 hover:underline">Save</button>
-                    <button onClick={cancelEdit} className="text-xs text-slate-500 hover:underline">Cancel</button>
-                  </td>
-                </>
-              ) : (
-                <>
-                  <td className="py-1.5">{l.displayName}</td>
-                  <td className="py-1.5 text-right tabular-nums">{l.kind === "charge" ? "—" : l.quantity}</td>
-                  <td className="py-1.5 text-right tabular-nums">
-                    {l.kind === "charge" ? "—" : <Money cents={isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents} />}
-                  </td>
-                  <td className="py-1.5 text-right tabular-nums">
-                    <Money cents={l.kind === "charge" ? (isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents) : l.quantity * (isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents)} />
-                  </td>
-                  <td className="py-1.5 text-right whitespace-nowrap">
-                    {l.kind !== "charge" && <button onClick={() => startEdit(l)} className="mr-2 text-xs text-brand-700 hover:underline">Edit</button>}
-                    <button onClick={() => removeLine(l.id)} className="text-xs text-red-600 hover:underline">✕</button>
-                  </td>
-                </>
-              )}
+          </thead>
+          <tbody>
+            {lines.length === 0 && (
+              <tr className="border-t border-line">
+                <td colSpan={5} className="py-4 text-center text-slate-400">
+                  No lines yet — add one below.
+                </td>
+              </tr>
+            )}
+            {lines.map((l) => (
+              <tr key={l.id} className="border-t border-line">
+                {editingId === l.id ? (
+                  <>
+                    <td className="py-1.5">
+                      <input className={`${INPUT_CLASS} text-sm`} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                    </td>
+                    <td className="py-1.5 text-right">
+                      {l.kind === "charge" ? "—" : (
+                        <input type="number" min="0" className={`w-16 ${INPUT_CLASS} text-right text-sm`} value={editForm.qty} onChange={(e) => setEditForm({ ...editForm, qty: e.target.value })} />
+                      )}
+                    </td>
+                    <td className="py-1.5 text-right">
+                      {l.kind === "charge" ? "—" : (
+                        <input type="number" step="0.01" min="0" className={`w-20 ${INPUT_CLASS} text-right text-sm`} value={editForm.cost} onChange={(e) => setEditForm({ ...editForm, cost: e.target.value })} />
+                      )}
+                    </td>
+                    <td className="py-1.5 text-right text-slate-400">—</td>
+                    <td className="py-1.5 text-right whitespace-nowrap">
+                      <button onClick={() => saveEdit(l)} className="mr-2 text-xs text-emerald-700 hover:underline">Save</button>
+                      <button onClick={cancelEdit} className="text-xs text-slate-500 hover:underline">Cancel</button>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="py-1.5">{l.displayName}</td>
+                    <td className="py-1.5 text-right tabular-nums">{l.kind === "charge" ? "—" : l.quantity}</td>
+                    <td className="py-1.5 text-right tabular-nums">
+                      {l.kind === "charge" ? "—" : <Money cents={isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents} />}
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums">
+                      <Money cents={l.kind === "charge" ? (isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents) : l.quantity * (isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents)} />
+                    </td>
+                    <td className="py-1.5 text-right whitespace-nowrap">
+                      {l.kind !== "charge" && <button onClick={() => startEdit(l)} className="mr-2 text-xs text-brand-700 hover:underline">Edit</button>}
+                      <button onClick={() => removeLine(l.id)} className="text-xs text-red-600 hover:underline">✕</button>
+                    </td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-line font-semibold">
+              <td colSpan={3} className="py-1.5">Total</td>
+              <td className="py-1.5 text-right"><Money cents={total} /></td>
+              <td />
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t border-line font-semibold">
-            <td colSpan={3} className="py-1.5">Total</td>
-            <td className="py-1.5 text-right"><Money cents={total} /></td>
-            <td />
-          </tr>
-        </tfoot>
-      </table>
+          </tfoot>
+        </table>
+      </div>
 
       <div className="rounded-xl border border-line p-3">
         <p className="mb-2 text-xs font-semibold uppercase text-slate-500">Add a line</p>
