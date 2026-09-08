@@ -109,3 +109,47 @@ describe("dashboardSummary — wholesale-inclusive headline totals", () => {
     expect(d.totalNetProfitCents).toBe(1250); // paid profit only
   });
 });
+
+describe("dashboardSummary — period and rates", () => {
+  it("subtracts expenses to give business profit", () => {
+    saveLedger(db, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+${SALE("Earnings for selling a Mystery Dumpling #1", "$10.00", "9")}`));
+    insertExpense(db, { description: "Mailers", type: "one_time", amountCents: 250, incurredOn: "2026-06-14" });
+
+    const d = dashboardSummary(db);
+    expect(d.totalNetProfitCents).toBe(1000);
+    expect(d.totalExpensesCents).toBe(250);
+    expect(d.businessProfitCents).toBe(750);
+  });
+
+  it("derives margin, per-show and per-unit", () => {
+    saveLedger(db, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+${SALE("Earnings for selling a Mystery Dumpling #1", "$10.00", "9")}`));
+
+    const d = dashboardSummary(db);
+    expect(d.marginPct).toBe(100);          // no costs on an unmapped sale
+    expect(d.showCount).toBe(1);
+    expect(d.profitPerShowCents).toBe(1000);
+    expect(d.profitPerUnitCents).toBe(1000);
+  });
+
+  it("returns zeroes rather than NaN when the period has no shows", () => {
+    const d = dashboardSummary(db, { from: "2030-01-01", to: "2030-01-31" });
+    expect(d.totalNetProfitCents).toBe(0);
+    expect(d.marginPct).toBe(0);
+    expect(d.profitPerShowCents).toBe(0);
+    expect(d.profitPerUnitCents).toBe(0);
+    expect(d.showCount).toBe(0);
+  });
+
+  it("keeps balances unfiltered — cash and inventory spend ignore the period", () => {
+    saveLedger(db, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 14, 2026, 05:00:00 PM","-$534.39","","","Payout to bank","completed","PAYOUT","b"`));
+    const cheese = insertItem(db, { name: "Cheese", unitCostCents: 250, qtyPurchased: 0, lotId: null });
+    addPurchase(db, { itemId: cheese, purchasedOn: null, quantity: 20, unitCostCents: 250 });
+
+    const far = dashboardSummary(db, { from: "2030-01-01", to: "2030-01-31" });
+    expect(far.paidToBankCents).toBe(53439);
+    expect(far.netInventorySpendCents).toBe(5000);
+  });
+});
