@@ -60,3 +60,20 @@ export function rangeFromParams(p: { month?: string; from?: string; to?: string;
   }
   return undefined;
 }
+
+type Mode = "week" | "month" | "all";
+
+/** Build a period URL for any page. Kept out of the component so the rule is
+ *  testable without rendering React and a router. */
+export function periodHref(basePath: string, query: string): string {
+  return query ? `${basePath}?${query}` : basePath;
+}
+
+/** Resolve the active period mode from URL search params and a fallback.
+ *  Precedence: all → month → week → fallback. */
+export function periodMode(p: { week?: string; month?: string; all?: string }, fallback: Mode): Mode {
+  if (p.all) return "all";
+  if (p.month) return "month";
+  if (p.week) return "week";
+  return fallback;
+}

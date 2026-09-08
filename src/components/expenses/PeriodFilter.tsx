@@ -1,18 +1,18 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { currentIsoWeek } from "@/lib/ui/expense-range";
+import { currentIsoWeek, periodHref, periodMode } from "@/lib/ui/expense-range";
 
 type Mode = "week" | "month" | "all";
 
-export function PeriodFilter() {
+export function PeriodFilter({ basePath = "/expenses", defaultMode = "week" }: { basePath?: string; defaultMode?: Mode } = {}) {
   const router = useRouter();
   const params = useSearchParams();
   const week = params.get("week") ?? "";
   const month = params.get("month") ?? "";
   const all = params.get("all");
-  const mode: Mode = all ? "all" : month ? "month" : "week";
+  const mode: Mode = periodMode({ week: week || undefined, month: month || undefined, all: all || undefined }, defaultMode);
 
-  const go = (qs: string) => router.push(qs ? `/expenses?${qs}` : "/expenses");
+  const go = (qs: string) => router.push(periodHref(basePath, qs));
   const pickMode = (m: Mode) => {
     if (m === "all") go("all=1");
     else if (m === "month") go(`month=${month || new Date().toISOString().slice(0, 7)}`);
