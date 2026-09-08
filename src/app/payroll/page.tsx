@@ -20,7 +20,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
   const byPerson = payrollByPerson(db, range);
   return (
     <div className="space-y-6">
-      <PageHeader title="Payroll" subtitle="Wages paid to people" action={<Suspense fallback={null}><PayrollMonthFilter /></Suspense>} />
+      <PageHeader title="Payroll" subtitle="Shifts worked, charged to that day's shows" action={<Suspense fallback={null}><PayrollMonthFilter /></Suspense>} />
       <div className="grid gap-4 sm:grid-cols-[auto,1fr] sm:items-start">
         <Stat label={range ? "Total (selected period)" : "Total payroll"} value={<Money cents={totalPayrollCents(db, range)} />} />
         <Card title="By person">

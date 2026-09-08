@@ -5,7 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 
 const baseLinks: [string, string][] = [
   ["/", "Dashboard"], ["/shows", "Shows"], ["/inventory", "Inventory"],
-  ["/invoices", "Invoices"], ["/expenses", "Expenses"], ["/report", "Report"], ["/settings", "Settings"],
+  ["/invoices", "Invoices"], ["/expenses", "Expenses"], ["/payroll", "Payroll"],
+  ["/report", "Report"], ["/settings", "Settings"],
 ];
 
 export function Nav({ user }: { user: { username: string; is_admin: number } | null }) {

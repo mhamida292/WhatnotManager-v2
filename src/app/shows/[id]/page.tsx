@@ -37,6 +37,7 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
     ["COGS (items sold)", <Money cents={-show.cogsCents} />],
     [giveawayLabel, <Money cents={-show.giveawayCostCents} />],
     ["Shipping supplies", <Money cents={-show.shippingSuppliesCents} />],
+    ["Labor (wages this day)", <Money cents={-show.laborCents} />],
     ["Net profit", <Money cents={show.netCents} />],
     [`Your ${ownerSharePct}%`, <Money cents={split.ownerShareCents} />],
     [`Partner ${100 - ownerSharePct}%`, <Money cents={split.partnerShareCents} />],

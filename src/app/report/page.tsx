@@ -57,7 +57,7 @@ export default async function ReportPage() {
             Payout <Money cents={s.payoutCents} /> ·{" "}
             Giveaways {s.giveawayCount} → <Money cents={-s.giveawayCostCents} />{s.giveawayUnallocated && <span className="ml-1 text-amber-700">(not entered)</span>} ·{" "}
             Tips <Money cents={s.tipTotalCents} /> · Bonus <Money cents={s.bonusTotalCents} /> ·
-            Other <Money cents={s.otherTotalCents} /> · Shipping <Money cents={s.shippingSuppliesCents} />
+            Other <Money cents={s.otherTotalCents} /> · Shipping <Money cents={s.shippingSuppliesCents} /> · Labor <Money cents={s.laborCents} />
           </div>
         </Card>
       ))}
