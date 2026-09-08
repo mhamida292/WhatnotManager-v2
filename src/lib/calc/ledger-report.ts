@@ -70,6 +70,7 @@ export interface ReportShow {
 export interface WholesaleInvoiceLine {
   invoiceId: number;
   number: string;
+  invoiceDate: string | null;   // invoices.invoice_date; null on older rows
   customer: string | null;
   paid: boolean;
   qty: number;
@@ -248,13 +249,13 @@ export function buildLedgerReport(db: DB): LedgerReport {
 
   // build wholesale rollup
   const saleInvoices = db.prepare(
-    "SELECT id, customer, paid FROM invoices WHERE direction='sale' AND status='posted' ORDER BY id DESC"
-  ).all() as { id: number; customer: string | null; paid: number }[];
+    "SELECT id, customer, paid, invoice_date AS invoiceDate FROM invoices WHERE direction='sale' AND status='posted' ORDER BY id DESC"
+  ).all() as { id: number; customer: string | null; paid: number; invoiceDate: string | null }[];
   const wholesaleInvoices = saleInvoices.map((inv) => {
     const lines = db.prepare("SELECT item_id AS itemId, quantity, unit_price_cents AS price FROM invoice_lines WHERE invoice_id = ? AND kind = 'item'").all(inv.id) as { itemId: number; quantity: number; price: number }[];
     let qty = 0, revenue = 0, cogs = 0;
     for (const l of lines) { qty += l.quantity; revenue += l.quantity * (l.price ?? 0); cogs += l.quantity * (itemCost.get(l.itemId) ?? 0); }
-    return { invoiceId: inv.id, number: invoiceNumber(inv.id), customer: inv.customer, paid: !!inv.paid, qty, revenueCents: revenue, cogsCents: cogs, profitCents: revenue - cogs };
+    return { invoiceId: inv.id, number: invoiceNumber(inv.id), invoiceDate: inv.invoiceDate, customer: inv.customer, paid: !!inv.paid, qty, revenueCents: revenue, cogsCents: cogs, profitCents: revenue - cogs };
   });
   const paidWholesale = wholesaleInvoices.filter((w) => w.paid);
   const wholesale: WholesaleRollup = {
