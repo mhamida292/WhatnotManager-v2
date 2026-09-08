@@ -103,7 +103,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         businessProfitCents={d.businessProfitCents}
       />
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-line bg-white p-4 shadow-soft">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Inventory</h2>
           <div className="mt-3 grid grid-cols-3 gap-3">
@@ -112,9 +112,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             <div><div className="text-xs text-slate-500">Products</div><div className="text-lg font-semibold">{stock.productsInStock}</div></div>
           </div>
         </div>
-        <div className="rounded-2xl border border-line bg-white p-4 shadow-soft">
+        <div className="flex flex-col rounded-2xl border border-line bg-white p-4 shadow-soft">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Profit by show</h2>
-          <div className="mt-3"><ProfitChart points={points} /></div>
+          <div className="relative mt-3 min-h-0 flex-1"><ProfitChart points={points} /></div>
         </div>
       </div>
 

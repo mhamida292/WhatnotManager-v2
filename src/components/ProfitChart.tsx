@@ -6,10 +6,10 @@ const W = 800, H = 200;
 export function ProfitChart({ points }: { points: ChartPoint[] }) {
   const g = chartGeometry(points, W, H);
   if (!g) {
-    return <div className="grid h-40 place-items-center text-sm text-slate-400">No shows yet</div>;
+    return <div className="absolute inset-0 grid place-items-center text-sm text-slate-400">No shows yet</div>;
   }
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-44 w-full">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
       <defs>
         <linearGradient id="profitFill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#059669" stopOpacity="0.18" />
