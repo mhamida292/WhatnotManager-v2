@@ -9,10 +9,8 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   const body = await req.json();
-  const ownerSharePct = Number(body.ownerSharePct);
   const defaultShippingSuppliesCents = Number(body.defaultShippingSuppliesCents);
-  if (!Number.isFinite(ownerSharePct) || ownerSharePct < 0 || ownerSharePct > 100 ||
-      !Number.isFinite(defaultShippingSuppliesCents) || defaultShippingSuppliesCents < 0) {
+  if (!Number.isFinite(defaultShippingSuppliesCents) || defaultShippingSuppliesCents < 0) {
     return NextResponse.json({ error: "Invalid settings values" }, { status: 400 });
   }
   const db = await dbForRequest();
@@ -33,7 +31,7 @@ export async function PUT(req: NextRequest) {
   const invoiceAddress = trimOrNull(body.invoiceAddress);
   const invoiceEmail = trimOrNull(body.invoiceEmail);
   updateSettings(db, {
-    ownerSharePct, giveawayUnitCents, defaultShippingSuppliesCents, businessName,
+    giveawayUnitCents, defaultShippingSuppliesCents, businessName,
     invoicePhone, invoiceAddress, invoiceEmail,
     invoiceShowPhone: body.invoiceShowPhone !== false,
     invoiceShowAddress: body.invoiceShowAddress !== false,

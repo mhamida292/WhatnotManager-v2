@@ -13,7 +13,6 @@ The underlying math behind every number the app shows. All money is stored as
 | **Total payout** | Σ over shows of each show's payout, where a show's payout = Σ of **all non-withdrawal** txns = sales + tips + bonus + giveaway-fee + other. |
 | **Paid to bank** | Σ of `PAYOUT`-kind (bank-withdrawal) amounts, shown positive. A *transfer*, not income/expense — excluded from profit. |
 | **Total net profit** | Σ of each show's net (see below). |
-| **Owner share / Partner share** | Split of total net (see split rule). |
 | **Net inventory spend** | Cash tied up in stock (balance-sheet, see below). |
 | **Total expenses** | Σ of every Expenses-page entry's `amount_cents`. |
 | **Total wages** | Σ of payroll amounts charged to shows. Unallocated wages are reported separately. |
@@ -40,16 +39,6 @@ net = payout − COGS − giveawayMerchCost − shippingSupplies − labor
   `payroll_entries` at report time, like COGS. Wages on a date with **no** show
   cannot belong to a net; they are reported separately as **unallocated labor**
   and are not subtracted anywhere.
-
-## Owner / partner split (`show-pnl.ts` → `splitProfit`)
-
-```
-partnerShare = floor(net × (100 − ownerPct) / 100)
-ownerShare   = net − partnerShare
-```
-
-Default `ownerPct = 80`, so partner = `floor(net × 20%)` and **the owner absorbs
-the rounding remainder** (partner gets the floor; owner is never short a cent).
 
 ## "Revenue" vs "Payout" (why they differ)
 

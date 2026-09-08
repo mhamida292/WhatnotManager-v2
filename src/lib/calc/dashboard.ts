@@ -9,8 +9,6 @@ export interface DashboardSummary {
   totalPayoutCents: number;
   paidToBankCents: number;
   totalNetProfitCents: number;
-  ownerShareCents: number;
-  partnerShareCents: number;
   netInventorySpendCents: number;
   totalExpensesCents: number;
   totalLaborCents: number;
@@ -32,8 +30,6 @@ export function dashboardSummary(db: DB): DashboardSummary {
     // report total is signed/negative; present as a positive amount.
     paidToBankCents: -report.totals.withdrawnToBankCents,
     totalNetProfitCents: report.totals.netCents,
-    ownerShareCents: report.totals.ownerShareCents,
-    partnerShareCents: report.totals.partnerShareCents,
     netInventorySpendCents,
     totalExpensesCents: totalExpensesCents(db),
     totalLaborCents: report.totals.laborCents,

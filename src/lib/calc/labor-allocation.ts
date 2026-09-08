@@ -16,8 +16,8 @@ export interface LaborAllocation {
 
 /** Charge each day's wages to the shows that ran that day, split evenly across
  *  same-day sessions. The remainder cent goes to the lowest session_seq so the
- *  parts always sum back to the total — same reasoning as splitProfit giving
- *  the floor to one side. Wages on a date with no show can't belong to a net,
+ *  parts always sum back to the total rather than losing a cent to rounding.
+ *  Wages on a date with no show can't belong to a net,
  *  so they're reported separately rather than dropped. */
 export function allocateLabor(entries: LaborEntry[], shows: LaborShow[]): LaborAllocation {
   const totalByDate = new Map<string, number>();

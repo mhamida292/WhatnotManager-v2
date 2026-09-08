@@ -8,7 +8,6 @@ import { dismissedCodes } from "@/lib/db/dismissed-names";
 import { isPayoutFailure, unrecognizedPayoutMessage } from "@/lib/csv/ledger";
 import { resolveItemId } from "@/lib/db/aliases";
 import { getSettings } from "@/lib/db/settings";
-import { splitProfit } from "./show-pnl";
 import { getAllocations, listGiveawayItems } from "@/lib/db/giveaway-items";
 import { getBundleComponentsByTxn } from "@/lib/db/bundles";
 import { secondsToClock } from "./sessions";
@@ -106,8 +105,6 @@ export interface LedgerReport {
     laborCents: number;
     unallocatedLaborCents: number;   // wages on dates with no show; NOT inside netCents
     netCents: number;
-    ownerShareCents: number;
-    partnerShareCents: number;
     withdrawnToBankCents: number;
     payoutFailureCents: number;
     unitsSold: number;
@@ -286,7 +283,6 @@ export function buildLedgerReport(db: DB): LedgerReport {
   netCents += wholesale.paidProfitCents;
   unitsSold += paidWholesale.reduce((s, w) => s + w.qty, 0);
 
-  const { ownerShareCents, partnerShareCents } = splitProfit(netCents, settings.ownerSharePct);
 
   const poolSummary: PoolSummary | undefined = pool
     ? {
@@ -301,7 +297,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
   return {
     shows,
     giveawayUnitCents: settings.giveawayUnitCents,
-    totals: { revenueCents, cogsCents, giveawayCostCents, shippingSuppliesCents, laborCents, unallocatedLaborCents: labor.unallocatedCents, netCents, ownerShareCents, partnerShareCents, withdrawnToBankCents, payoutFailureCents, unitsSold },
+    totals: { revenueCents, cogsCents, giveawayCostCents, shippingSuppliesCents, laborCents, unallocatedLaborCents: labor.unallocatedCents, netCents, withdrawnToBankCents, payoutFailureCents, unitsSold },
     wholesale,
     unrecognizedPayoutMessages: [...unrecognizedPayouts].sort(),
     unmappedNames: [...unmapped].sort(),

@@ -16,7 +16,7 @@ export function resetApp(db: DB): void {
       DELETE FROM inventory_items;
       DELETE FROM lots;
     `);
-    db.prepare(`UPDATE app_settings SET owner_share_pct = 80,
+    db.prepare(`UPDATE app_settings SET
       giveaway_unit_cents = 500, default_shipping_supplies_cents = 0 WHERE id = 1`).run();
   });
   tx();

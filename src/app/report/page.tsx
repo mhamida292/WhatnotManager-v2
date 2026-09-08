@@ -32,7 +32,6 @@ export default async function ReportPage() {
         <Stat label="Units sold" value={rep.totals.unitsSold} />
         <Stat label="COGS" value={<Money cents={rep.totals.cogsCents} />} />
         <Stat label="Net profit so far" value={<Money cents={rep.totals.netCents} />} />
-        <Stat label="Your share" value={<Money cents={rep.totals.ownerShareCents} />} />
       </div>
 
       {refunds.length > 0 && (

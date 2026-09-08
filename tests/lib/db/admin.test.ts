@@ -21,7 +21,7 @@ describe("resetApp", () => {
     insertExpense(db, { description: "Boxes", type: "one_time", amountCents: 500 });
     saveLedger(db, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
 "Jun 12, 2026, 10:14:57 AM","$0.49","L1","O1","Earnings for selling a Cheese Squishy #3","processing","SALES",""`));
-    updateSettings(db, { ownerSharePct: 70, giveawayUnitCents: 400, defaultShippingSuppliesCents: 250, businessName: null,
+    updateSettings(db, { giveawayUnitCents: 400, defaultShippingSuppliesCents: 250, businessName: null,
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
       invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
       costingMode: "per_sku", avgMethod: "moving" });
@@ -33,7 +33,7 @@ describe("resetApp", () => {
       expect(count(db, t)).toBe(0);
     }
     expect(listLedgerTransactions(db)).toHaveLength(0);
-    expect(getSettings(db)).toEqual({ ownerSharePct: 80, giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: null,
+    expect(getSettings(db)).toEqual({ giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: null,
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
       invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
       costingMode: "per_sku", avgMethod: "moving" });

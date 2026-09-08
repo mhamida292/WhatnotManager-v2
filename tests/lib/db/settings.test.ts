@@ -7,8 +7,7 @@ beforeEach(() => { db = createDb(":memory:"); });
 
 describe("settings", () => {
   it("returns the seeded defaults", () => {
-    expect(getSettings(db)).toEqual({
-      ownerSharePct: 80, giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: null,
+    expect(getSettings(db)).toEqual({ giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: null,
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
       invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
       costingMode: "per_sku", avgMethod: "moving",
@@ -16,14 +15,12 @@ describe("settings", () => {
   });
 
   it("updates and reads back", () => {
-    updateSettings(db, {
-      ownerSharePct: 70, giveawayUnitCents: 400, defaultShippingSuppliesCents: 250, businessName: "DirectDealzz",
+    updateSettings(db, { giveawayUnitCents: 400, defaultShippingSuppliesCents: 250, businessName: "DirectDealzz",
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
       invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
       costingMode: "pooled", avgMethod: "live",
     });
-    expect(getSettings(db)).toEqual({
-      ownerSharePct: 70, giveawayUnitCents: 400, defaultShippingSuppliesCents: 250, businessName: "DirectDealzz",
+    expect(getSettings(db)).toEqual({ giveawayUnitCents: 400, defaultShippingSuppliesCents: 250, businessName: "DirectDealzz",
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
       invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
       costingMode: "pooled", avgMethod: "live",

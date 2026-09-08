@@ -73,21 +73,18 @@ describe("buildLedgerReport", () => {
     expect(jun12.saleCount).toBe(2);
   });
 
-  it("computes grand totals and owner share from the configured split", () => {
-    updateSettings(db, { ownerSharePct: 80, giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: null,
+  it("computes grand totals", () => {
+    updateSettings(db, { giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: null,
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
       invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
       costingMode: "per_sku", avgMethod: "moving" });
     const rep = buildLedgerReport(db);
     expect(rep.totals.giveawayCostCents).toBe(0);  // no allocations → $0
     expect(rep.totals.netCents).toBe(-79);          // 171 - 250 - 0
-    // partner = floor(-79 * 0.2) = floor(-15.8) = -16; owner = -79 - (-16) = -63
-    expect(rep.totals.partnerShareCents).toBe(-16);
-    expect(rep.totals.ownerShareCents).toBe(-63);
   });
 
   it("scales giveaway cost with allocations (not the unit cost setting)", () => {
-    updateSettings(db, { ownerSharePct: 80, giveawayUnitCents: 700, defaultShippingSuppliesCents: 0, businessName: null,
+    updateSettings(db, { giveawayUnitCents: 700, defaultShippingSuppliesCents: 0, businessName: null,
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
       invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
       costingMode: "per_sku", avgMethod: "moving" });

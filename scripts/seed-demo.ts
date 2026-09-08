@@ -46,7 +46,6 @@ db.exec("DELETE FROM show_giveaway_allocations; DELETE FROM giveaway_items;"); /
 
 // 3) Business identity (shows on invoices) + keep default 80/20 split.
 updateSettings(db, {
-  ownerSharePct: 80,
   giveawayUnitCents: 500,
   defaultShippingSuppliesCents: 0,
   businessName: "Demo Squish Co.",

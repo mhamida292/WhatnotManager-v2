@@ -50,7 +50,7 @@ function seed(db: DB) {
   saveLedger(db, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
 "Jun 14, 2026, 09:00:00 AM","$100.00","L1","O1","Earnings for selling a Cheese Squishy #3","completed","SALES","a"
 "Jun 14, 2026, 05:00:00 PM","-$534.39","","","Payout to bank","completed","PAYOUT","b"`));
-  updateSettings(db, { ...getSettings(db), ownerSharePct: 75, giveawayUnitCents: 400, defaultShippingSuppliesCents: 0, businessName: "DirectDealzz" });
+  updateSettings(db, { ...getSettings(db), giveawayUnitCents: 400, defaultShippingSuppliesCents: 0, businessName: "DirectDealzz" });
   // Payroll and dismissals too, or the round-trip below compares two empty
   // tables and proves nothing about the newest columns.
   insertPayroll(db, {
@@ -73,8 +73,10 @@ describe("importWorkbook", () => {
     }
     expect(counts.inventory_items).toBe(2);
     // money/integer fields must survive as numbers, not stringified
-    const settings = fresh.prepare("SELECT owner_share_pct as p, giveaway_unit_cents as g FROM app_settings WHERE id=1").get() as { p: number; g: number };
-    expect(settings).toEqual({ p: 75, g: 400 });
+    const settings = fresh.prepare("SELECT giveaway_unit_cents as g, default_shipping_supplies_cents as s FROM app_settings WHERE id=1").get() as { g: number; s: number };
+    expect(settings).toEqual({ g: 400, s: 0 });
+    const wage = fresh.prepare("SELECT amount_cents AS a, hours AS h FROM payroll_entries LIMIT 1").get() as { a: number; h: number };
+    expect(wage).toEqual({ a: 7500, h: 5 });
   });
 
   it("rejects a workbook missing a required sheet and leaves the db unchanged", async () => {

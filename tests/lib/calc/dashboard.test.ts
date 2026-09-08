@@ -31,25 +31,21 @@ ${SALE("Earnings for selling a Cheese Squishy #3", "$12.00", "1")}`));
     expect(d.grossSalesCents).toBe(1200);               // sale earnings before any costs
     expect(d.totalPayoutCents).toBe(1200);              // only a sale here, so payout == sales
     expect(d.totalNetProfitCents).toBe(950);            // 1200 payout - 250 cogs
-    expect(d.partnerShareCents).toBe(190);              // floor(950 * 0.2)
-    expect(d.ownerShareCents).toBe(760);
     expect(d.netInventorySpendCents).toBe(5000);        // 250 unit cost x 20 purchased
     expect(d.totalExpensesCents).toBe(500);
   });
 
-  it("matches the ledger report and applies the configured owner share percentage", () => {
+  it("matches the ledger report's net profit", () => {
     // One UNMAPPED sale for $10.00 -> payout 1000, cogs 0, net 1000.
     saveLedger(db, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
 ${SALE("Earnings for selling a Mystery Dumpling #1", "$10.00", "9")}`));
-    updateSettings(db, { ownerSharePct: 70, giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: null,
+    updateSettings(db, { giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: null,
       invoicePhone: null, invoiceAddress: null, invoiceEmail: null,
       invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
       costingMode: "per_sku", avgMethod: "moving" });
 
     const d = dashboardSummary(db);
     expect(d.totalNetProfitCents).toBe(1000);
-    expect(d.partnerShareCents).toBe(300);              // floor(1000 * 0.3)
-    expect(d.ownerShareCents).toBe(700);
   });
 
   it("excludes bonuses from gross sales but includes them in total payout", () => {

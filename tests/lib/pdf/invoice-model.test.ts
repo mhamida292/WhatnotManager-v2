@@ -3,8 +3,7 @@ import { invoicePdfModel } from "@/lib/pdf/invoice-model";
 import type { Invoice, InvoiceLine } from "@/lib/db/invoices";
 import type { Settings } from "@/lib/db/settings";
 
-const baseSettings: Settings = {
-  ownerSharePct: 80, giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: "DirectDealzz",
+const baseSettings: Settings = { giveawayUnitCents: 500, defaultShippingSuppliesCents: 0, businessName: "DirectDealzz",
   invoicePhone: "(313) 555-0142", invoiceAddress: "123 Warehouse Ave", invoiceEmail: "b@x.com",
   invoiceShowPhone: true, invoiceShowAddress: true, invoiceShowEmail: true, whatnotOnly: false,
   costingMode: "per_sku", avgMethod: "moving",

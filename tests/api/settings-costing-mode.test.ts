@@ -14,7 +14,7 @@ beforeEach(() => {
   getDb.mockReturnValue(db);
 });
 
-const baseBody = { ownerSharePct: 50, defaultShippingSuppliesCents: 0 };
+const baseBody = { defaultShippingSuppliesCents: 0 };
 
 function putSettings(body: Record<string, unknown>) {
   const req = new NextRequest("http://test/api/settings", { method: "PUT", body: JSON.stringify(body) });

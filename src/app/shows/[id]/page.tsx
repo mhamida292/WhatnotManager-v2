@@ -1,7 +1,6 @@
 import { dbForRequest } from "@/lib/auth/request";
 import { buildLedgerReport } from "@/lib/calc/ledger-report";
 import { getSettings } from "@/lib/db/settings";
-import { splitProfit } from "@/lib/calc/show-pnl";
 import { showDeleteImpact } from "@/lib/db/shows";
 import { Money } from "@/components/Money";
 import { Card } from "@/components/ui/Card";
@@ -28,8 +27,6 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
     );
   }
   const impact = showDeleteImpact(db, show.showId);
-  const { ownerSharePct } = getSettings(db);
-  const split = splitProfit(show.netCents, ownerSharePct);
   const giveawayLabel = `Giveaways (${show.giveawayCount})`;
   const rows: [string, React.ReactNode][] = [
     ["Payout", <Money cents={show.payoutCents} />],
@@ -39,8 +36,6 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
     ["Shipping supplies", <Money cents={-show.shippingSuppliesCents} />],
     ["Labor (wages this day)", <Money cents={-show.laborCents} />],
     ["Net profit", <Money cents={show.netCents} />],
-    [`Your ${ownerSharePct}%`, <Money cents={split.ownerShareCents} />],
-    [`Partner ${100 - ownerSharePct}%`, <Money cents={split.partnerShareCents} />],
   ];
   return (
     <div className="space-y-6">

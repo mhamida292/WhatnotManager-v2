@@ -31,7 +31,6 @@ export function SettingsForm({ initial }: { initial: Settings }) {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         // Preserved (no longer edited here) so downstream reports/shows keep their values.
-        ownerSharePct: initial.ownerSharePct,
         defaultShippingSuppliesCents: initial.defaultShippingSuppliesCents,
         businessName: businessName.trim() || null,
         invoicePhone: invoicePhone.trim() || null,
