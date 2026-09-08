@@ -1,3 +1,20 @@
+/** Split out of SCHEMA so migratePayrollShifts recreates the table from the very
+ *  same DDL a fresh database gets, instead of a copy that could drift from it. */
+export const PAYROLL_SCHEMA = `
+CREATE TABLE IF NOT EXISTS payroll_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  person TEXT NOT NULL,
+  work_date TEXT NOT NULL,
+  start_time TEXT NOT NULL,
+  end_time TEXT NOT NULL,
+  hours REAL NOT NULL,
+  rate_cents INTEGER NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  note TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_payroll_work_date ON payroll_entries(work_date);
+`;
+
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS lots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -183,14 +200,5 @@ CREATE TABLE IF NOT EXISTS bundle_components (
   qty INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS payroll_entries (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  person TEXT NOT NULL,
-  period_start TEXT,
-  period_end TEXT,
-  hours REAL,
-  rate_cents INTEGER,
-  amount_cents INTEGER NOT NULL,
-  note TEXT
-);
+${PAYROLL_SCHEMA}
 `;

@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { resolve, join } from "node:path";
 import { mkdirSync } from "node:fs";
-import { SCHEMA } from "./schema";
+import { SCHEMA, PAYROLL_SCHEMA } from "./schema";
 import { backfillSessions } from "./ledger";
 
 export type DB = Database.Database;
@@ -94,6 +94,7 @@ export function migrate(db: DB): void {
 
   // Retired 2026-07-27: the brother cost-sharing concept was removed. The table
   // was unreachable (no writer) and its rows contributed 0 to every calculation.
+  migratePayrollShifts(db);
   db.prepare("DROP TABLE IF EXISTS brother_transactions").run();
 }
 
@@ -253,6 +254,25 @@ export function migrateLedgerPayoutFailureKind(db: DB): void {
        WHERE show_id = shows.id AND kind <> 'payout'
      ) WHERE source_hash='ledger'`
   ).run();
+}
+
+/** One-time, idempotent: payroll_entries moved from a pay period
+ *  (period_start/period_end) to a single worked shift (work_date +
+ *  start_time/end_time). The new hours/start/end columns are NOT NULL with no
+ *  sensible default, so the table is recreated rather than ALTERed.
+ *
+ *  A table that unexpectedly has rows is renamed aside instead of dropped --
+ *  losing wage history to a migration is far worse than leaving a stray table
+ *  on disk. Guarded on the old column, so it runs exactly once. */
+export function migratePayrollShifts(db: DB): void {
+  const cols = (db.prepare("PRAGMA table_info(payroll_entries)").all() as { name: string }[]).map((c) => c.name);
+  if (cols.length === 0 || !cols.includes("period_start")) return; // fresh schema, or already migrated
+  const n = (db.prepare("SELECT COUNT(*) n FROM payroll_entries").get() as { n: number }).n;
+  db.transaction(() => {
+    if (n === 0) db.exec("DROP TABLE payroll_entries");
+    else db.exec("ALTER TABLE payroll_entries RENAME TO payroll_entries_legacy");
+    db.exec(PAYROLL_SCHEMA);
+  })();
 }
 
 /** One-time, idempotent: mirror legacy qty_samples (as negative 'sample') and

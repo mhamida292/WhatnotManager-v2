@@ -10,10 +10,15 @@ export async function POST(req: NextRequest) {
   const person = typeof b.person === "string" ? b.person.trim() : "";
   if (!person) return NextResponse.json({ error: "Person is required" }, { status: 400 });
   if (!Number.isFinite(Number(b.amountCents))) return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+  // Fields are taken as given for now; Task 5 derives hours/amount server-side
+  // from the shift and rejects a malformed or zero-length one.
   const id = insertPayroll(await dbForRequest(), {
-    person, periodStart: b.periodStart || null, periodEnd: b.periodEnd || null,
-    hours: b.hours == null || b.hours === "" ? null : Number(b.hours),
-    rateCents: b.rateCents == null || b.rateCents === "" ? null : Math.trunc(Number(b.rateCents)),
+    person,
+    workDate: b.workDate ?? "",
+    startTime: b.startTime ?? "",
+    endTime: b.endTime ?? "",
+    hours: Number(b.hours) || 0,
+    rateCents: Math.trunc(Number(b.rateCents)) || 0,
     amountCents: Math.trunc(Number(b.amountCents)), note: b.note ?? null,
   });
   return NextResponse.json({ id });

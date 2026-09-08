@@ -12,15 +12,15 @@ export function PayrollTable({ rows }: { rows: PayrollRow[] }) {
   return (
     <table className="w-full text-sm">
       <thead><tr className="text-left text-slate-500">
-        <th className="py-2">Period</th><th>Person</th><th>Hours</th><th>Rate</th><th>Amount</th><th>Note</th><th></th>
+        <th className="py-2">Worked</th><th>Person</th><th>Hours</th><th>Rate</th><th>Amount</th><th>Note</th><th></th>
       </tr></thead>
       <tbody>
         {rows.map((r) => (
           <tr key={r.id} className="border-t border-line">
-            <td className="py-2">{r.periodStart ?? "—"}{r.periodEnd ? ` → ${r.periodEnd}` : ""}</td>
+            <td className="py-2">{r.workDate} <span className="text-slate-400">{r.startTime}–{r.endTime}</span></td>
             <td>{r.person}</td>
-            <td>{r.hours ?? "—"}</td>
-            <td>{r.rateCents == null ? "—" : <Money cents={r.rateCents} />}</td>
+            <td>{r.hours}</td>
+            <td><Money cents={r.rateCents} /></td>
             <td><Money cents={r.amountCents} /></td>
             <td>{r.note ?? "—"}</td>
             <td><button className="text-slate-400 hover:text-red-600" onClick={() => del(r.id)}>Delete</button></td>
