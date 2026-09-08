@@ -27,7 +27,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const db = await dbForRequest();
 
   const d = dashboardSummary(db, range);
-  const rep = narrowReportToRange(buildLedgerReport(db), range);
+  const fullRep = buildLedgerReport(db);
+  const rep = narrowReportToRange(fullRep, range);
   const gap = uncostedSales(rep);
 
   // Inventory is a balance: always current, never narrowed.
@@ -38,6 +39,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   const shows = [...rep.shows].sort((a, b) => a.showDate.localeCompare(b.showDate));
   const realShows = shows.filter((s) => s.saleCount > 0);
+  const nonShows = shows.filter((s) => s.saleCount === 0);
+  const nonShowNetCents = nonShows.reduce((a, s) => a + s.netCents, 0);
+  const nonShowPayoutCents = nonShows.reduce((a, s) => a + s.payoutCents, 0);
   const points = realShows.map((s) => ({
     label: s.dateHasMultipleSessions ? `${s.showDate} #${s.sessionSeq + 1}` : s.showDate,
     valueCents: s.netCents,
@@ -58,25 +62,41 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         action={<Suspense fallback={null}><PeriodFilter basePath="/" defaultMode="all" /></Suspense>}
       />
 
+      {rep.unrecognizedPayoutMessages.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <p className="font-medium">
+            {rep.unrecognizedPayoutMessages.length} payout-related adjustment(s) weren&apos;t recognised — they are
+            counting as show profit, which may overstate your net.
+          </p>
+          <ul className="mt-1 list-disc pl-5">
+            {rep.unrecognizedPayoutMessages.map((m) => <li key={m} className="font-mono text-xs">{m}</li>)}
+          </ul>
+        </div>
+      )}
+
       {gap.count > 0 && (
         <Link href="/inventory" className="block rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 hover:bg-amber-100">
-          {gap.count} sale(s) have no cost attached — about <Money cents={gap.estimatedCostCents} /> missing from COGS.
+          {gap.estimatedCostCents === 0
+            ? <>{gap.count} sale(s) have no cost attached — <Money cents={gap.revenueCents} /> in revenue with no COGS.</>
+            : <>{gap.count} sale(s) have no cost attached — about <Money cents={gap.estimatedCostCents} /> missing from COGS.</>}
         </Link>
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Business profit"
           value={<span className="text-3xl font-semibold"><Money cents={d.businessProfitCents} /></span>}
-          sub={`${d.marginPct}% of payout`} />
+          sub={<>after <Money cents={d.totalExpensesCents} /> expenses</>} />
         <Stat label="Show profit" value={<Money cents={d.totalNetProfitCents} />}
-          sub={<><Money cents={d.profitPerShowCents} /> per show</>} />
+          sub={<>{d.marginPct}% · <Money cents={d.profitPerShowCents} /> per show</>} />
         <Stat label="Cash withdrawn" value={<Money cents={d.paidToBankCents} />} sub="all time" />
       </div>
 
       <Breakdown
         payoutCents={d.totalPayoutCents}
+        wholesaleRevenueCents={rep.wholesale.paidRevenueCents}
         cogsCents={rep.totals.cogsCents}
         giveawayCostCents={rep.totals.giveawayCostCents}
+        shippingSuppliesCents={rep.totals.shippingSuppliesCents}
         laborCents={rep.totals.laborCents}
         showProfitCents={d.totalNetProfitCents}
         expensesCents={d.totalExpensesCents}
@@ -107,9 +127,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <th className="px-4 py-2 text-right">Net</th>
           <th className="px-4 py-2">Margin</th>
         </>}>
-          {realShows.length === 0 && (
+          {realShows.length === 0 && nonShows.length === 0 && (
             <tr><td colSpan={5} className="px-4 py-3 text-slate-500">
-              No shows in this period.
+              {fullRep.shows.length === 0
+                ? "No shows yet. Import your Whatnot ledger on the Shows page."
+                : "No shows in this period."}
             </td></tr>
           )}
           {[...realShows].reverse().map((s) => (
@@ -130,6 +152,17 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               </td>
             </tr>
           ))}
+          {nonShows.length > 0 && (
+            <tr className="border-t border-line bg-slate-50 text-slate-500">
+              <td className="px-4 py-2 italic">
+                <Link href="/report#refunds" className="hover:underline">Non-show activity (refunds, fees, claims) · {nonShows.length}</Link>
+              </td>
+              <td className="px-4 py-2"><Money cents={nonShowPayoutCents} /></td>
+              <td className="px-4 py-2">$0.00</td>
+              <td className="px-4 py-2 text-right"><Money cents={nonShowNetCents} /></td>
+              <td className="px-4 py-2" />
+            </tr>
+          )}
         </DataTable>
       </div>
     </div>

@@ -2,8 +2,10 @@ import { Money } from "@/components/Money";
 
 export interface BreakdownInput {
   payoutCents: number;
+  wholesaleRevenueCents: number;
   cogsCents: number;
   giveawayCostCents: number;
+  shippingSuppliesCents: number;
   laborCents: number;
   showProfitCents: number;
   expensesCents: number;
@@ -25,15 +27,26 @@ export function breakdownRows(i: BreakdownInput): BreakdownRow[] {
   const pct = (c: number) =>
     i.payoutCents <= 0 ? 0 : Math.max(0, Math.min(100, (Math.abs(c) / i.payoutCents) * 100));
 
-  return [
+  const rows: BreakdownRow[] = [
     { label: "Payout", amountCents: i.payoutCents, widthPct: pct(i.payoutCents), color: "bg-teal-700" },
+  ];
+  if (i.wholesaleRevenueCents !== 0) {
+    rows.push({ label: "Wholesale", amountCents: i.wholesaleRevenueCents, widthPct: pct(i.wholesaleRevenueCents), color: "bg-teal-500" });
+  }
+  rows.push(
     { label: "COGS", amountCents: -i.cogsCents, widthPct: pct(i.cogsCents), color: "bg-red-500" },
     { label: "Giveaways", amountCents: -i.giveawayCostCents, widthPct: pct(i.giveawayCostCents), color: "bg-orange-500" },
+  );
+  if (i.shippingSuppliesCents !== 0) {
+    rows.push({ label: "Shipping", amountCents: -i.shippingSuppliesCents, widthPct: pct(i.shippingSuppliesCents), color: "bg-fuchsia-500" });
+  }
+  rows.push(
     { label: "Labor", amountCents: -i.laborCents, widthPct: pct(i.laborCents), color: "bg-violet-500" },
     { label: "Show profit", amountCents: i.showProfitCents, widthPct: pct(Math.max(i.showProfitCents, 0)), color: "bg-emerald-400" },
     { label: "Expenses", amountCents: -i.expensesCents, widthPct: pct(i.expensesCents), color: "bg-yellow-700" },
     { label: "Business profit", amountCents: i.businessProfitCents, widthPct: pct(Math.max(i.businessProfitCents, 0)), color: "bg-emerald-500", strong: true },
-  ];
+  );
+  return rows;
 }
 
 export function Breakdown(props: BreakdownInput) {
