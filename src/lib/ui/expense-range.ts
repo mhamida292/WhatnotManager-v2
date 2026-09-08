@@ -77,3 +77,13 @@ export function periodMode(p: { week?: string; month?: string; all?: string }, f
   if (p.week) return "week";
   return fallback;
 }
+
+/** Step a 'YYYY-MM' month by whole months, rolling the year over. Returns the
+ *  input untouched when it is not a month string, so a hand-edited URL cannot
+ *  turn the arrows into a crash. */
+export function shiftMonth(month: string, delta: number): string {
+  if (!/^\d{4}-\d{2}$/.test(month)) return month;
+  const [y, m] = month.split("-").map(Number);
+  const idx = y * 12 + (m - 1) + delta;
+  return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, "0")}`;
+}

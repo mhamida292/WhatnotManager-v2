@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { periodHref, periodMode } from "@/lib/ui/expense-range";
+import { periodHref, periodMode, shiftMonth } from "@/lib/ui/expense-range";
 
 describe("periodHref", () => {
   it("appends the query to the base path", () => {
@@ -37,5 +37,27 @@ describe("periodMode", () => {
   it("resolves mode: precedence all > month > week", () => {
     expect(periodMode({ week: "2026-W36", month: "2026-07", all: "1" }, "week")).toBe("all");
     expect(periodMode({ week: "2026-W36", month: "2026-07" }, "week")).toBe("month");
+  });
+});
+
+describe("shiftMonth", () => {
+  it("steps forward and back within a year", () => {
+    expect(shiftMonth("2026-08", 1)).toBe("2026-09");
+    expect(shiftMonth("2026-08", -1)).toBe("2026-07");
+  });
+
+  it("rolls over the year boundary in both directions", () => {
+    expect(shiftMonth("2026-12", 1)).toBe("2027-01");
+    expect(shiftMonth("2026-01", -1)).toBe("2025-12");
+  });
+
+  it("keeps two-digit months", () => {
+    expect(shiftMonth("2026-09", 1)).toBe("2026-10");
+    expect(shiftMonth("2026-10", -1)).toBe("2026-09");
+  });
+
+  it("returns the input unchanged when it is malformed", () => {
+    expect(shiftMonth("nonsense", 1)).toBe("nonsense");
+    expect(shiftMonth("", -1)).toBe("");
   });
 });
