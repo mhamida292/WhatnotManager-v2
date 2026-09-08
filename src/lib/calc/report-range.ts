@@ -62,7 +62,7 @@ export function narrowReportToRange(report: LedgerReport, range?: DateRange): Le
       laborCents: sum((s) => s.laborCents),
       netCents: sum((s) => s.netCents) + wholesale.paidProfitCents,
       payoutFailureCents: sum((s) => s.payoutFailureCents),
-      unitsSold: sum((s) => s.unitsSold),
+      unitsSold: sum((s) => s.unitsSold) + paid.reduce((a, i) => a + i.qty, 0),
       // withdrawnToBankCents and unallocatedLaborCents are intentionally carried
       // through unchanged -- see the doc comment above.
     },

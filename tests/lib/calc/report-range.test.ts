@@ -76,10 +76,14 @@ describe("narrowReportToRange", () => {
         paidRevenueCents: 4400, paidCogsCents: 3860, paidProfitCents: 540, owedToYouCents: 0,
       },
     });
-    const w = narrowReportToRange(r, july).wholesale;
+    const n = narrowReportToRange(r, july);
+    const w = n.wholesale;
     expect(w.invoices.map((i) => i.number)).toEqual(["INV-0001"]);
     expect(w.paidRevenueCents).toBe(3400);
     expect(w.paidProfitCents).toBe(140);
+    // totals.unitsSold must fold in paid-wholesale qty, same as buildLedgerReport does --
+    // the show contributes 10 (its default unitsSold) and the in-range paid invoice contributes 3.
+    expect(n.totals.unitsSold).toBe(13);
   });
 
   it("recomputes revenue and unmapped names from the kept shows", () => {
