@@ -16,6 +16,8 @@ export const TABLES = [
   // after shows/ledger_transactions/inventory_items (all FK parents above).
   "giveaway_items", "show_giveaway_allocations", "bundle_components",
   "payroll_entries",
+  // No FKs, so order is free; restoring these keeps "not a product" decisions.
+  "dismissed_product_names",
 ] as const;
 
 const APP_MARKER = "whatnot-business-manager";

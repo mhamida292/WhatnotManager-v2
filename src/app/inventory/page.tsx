@@ -5,6 +5,7 @@ import { inStockSummary } from "@/lib/calc/in-stock";
 import { buildLedgerReport } from "@/lib/calc/ledger-report";
 import { InventoryForms } from "@/components/InventoryForms";
 import { seenProductNames } from "@/lib/db/aliases";
+import { listDismissedNames } from "@/lib/db/dismissed-names";
 import { getSettings } from "@/lib/db/settings";
 import { Money } from "@/components/Money";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -16,6 +17,7 @@ import { ArchivedTable } from "@/components/inventory/ArchivedTable";
 import { ReceiveStock } from "@/components/inventory/ReceiveStock";
 import { buildMapSuggestions } from "@/lib/calc/map-suggestions";
 import { UnmappedSuggestions } from "@/components/inventory/UnmappedSuggestions";
+import { DismissedNames } from "@/components/inventory/DismissedNames";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,7 @@ export default async function InventoryPage() {
   const active = items.filter((i) => i.archivedAt == null);
   const archived = items.filter((i) => i.archivedAt != null);
   const seen = seenProductNames(db);
+  const dismissed = listDismissedNames(db);
   const { unmappedCount, unmappedNames, pool } = buildLedgerReport(db);
   const mapSuggestions = buildMapSuggestions(unmappedNames, active.map((i) => ({ id: i.id, name: i.name })));
   // Stat cards reflect ALL items, archived included — archiving is purely
@@ -68,6 +71,8 @@ export default async function InventoryPage() {
       {mapSuggestions.length > 0 && (
         <UnmappedSuggestions suggestions={mapSuggestions} items={active.map((i) => ({ id: i.id, name: i.name }))} />
       )}
+
+      <DismissedNames rows={dismissed} />
 
       <InventoryTable whatnotOnly={whatnotOnly} items={active.map((i) => ({
         id: i.id, name: i.name, location: i.location, unitCostCents: i.unitCostCents,

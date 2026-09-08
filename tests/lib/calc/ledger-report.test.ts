@@ -9,6 +9,7 @@ import { saveLedger } from "@/lib/db/ledger";
 import { buildLedgerReport } from "@/lib/calc/ledger-report";
 import { insertGiveawayItem, setAllocations } from "@/lib/db/giveaway-items";
 import { listShowSaleLines, setShowBundles } from "@/lib/db/bundles";
+import { dismissProductName, restoreProductName } from "@/lib/db/dismissed-names";
 
 // One Cheese sale ($0.49) + one unmapped Mystery sale ($2.00) + one giveaway (-$0.78) on Jun 12.
 const CSV = `"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
@@ -305,5 +306,32 @@ describe("buildLedgerReport — failed payouts", () => {
 "Jun 12, 2026, 6:00:00 AM","$42.00","","","Payout reversal for 9911","completed","ADJUSTMENT",""`));
     const rep = buildLedgerReport(db2);
     expect(rep.unrecognizedPayoutMessages).toEqual(["Payout reversal for 9911"]);
+  });
+});
+
+describe("buildLedgerReport — dismissed names", () => {
+  // "Mystery Mini Dumpling" is unmapped in the shared fixture.
+  it("drops a dismissed name from the unmapped list and count", () => {
+    expect(buildLedgerReport(db).unmappedNames).toContain("Mystery Mini Dumpling");
+
+    dismissProductName(db, "Mystery Mini Dumpling");
+
+    const rep = buildLedgerReport(db);
+    expect(rep.unmappedNames).not.toContain("Mystery Mini Dumpling");
+    expect(rep.unmappedCount).toBe(0);
+  });
+
+  it("still counts its revenue at $0 cost — dismissing hides, it does not cost", () => {
+    dismissProductName(db, "Mystery Mini Dumpling");
+    const show = buildLedgerReport(db).shows[0];
+    const line = show.products.find((p) => p.productName === "Mystery Mini Dumpling")!;
+    expect(line.revenueCents).toBe(200);
+    expect(line.costCents).toBe(0);
+  });
+
+  it("brings it back when restored", () => {
+    dismissProductName(db, "Mystery Mini Dumpling");
+    restoreProductName(db, "Mystery Mini Dumpling");
+    expect(buildLedgerReport(db).unmappedNames).toContain("Mystery Mini Dumpling");
   });
 });

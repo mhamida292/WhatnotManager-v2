@@ -201,4 +201,13 @@ CREATE TABLE IF NOT EXISTS bundle_components (
 );
 
 ${PAYROLL_SCHEMA}
+
+-- Whatnot product names deliberately left unmapped (bundle placeholders, non-merchandise).
+-- Keyed by the same base-normalized code aliases use, so '#N' variants dismiss together.
+-- Not a row in item_identifiers: that table's item_id is NOT NULL and a dismissal
+-- points at no item.
+CREATE TABLE IF NOT EXISTS dismissed_product_names (
+  code TEXT PRIMARY KEY,
+  dismissed_at TEXT NOT NULL
+);
 `;

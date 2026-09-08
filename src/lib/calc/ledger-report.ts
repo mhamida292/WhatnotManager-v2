@@ -4,6 +4,7 @@ import { listItems } from "@/lib/db/inventory";
 import { listLedgerTransactions } from "@/lib/db/ledger";
 import { allocateLabor } from "./labor-allocation";
 import { listPayroll } from "@/lib/db/payroll";
+import { dismissedCodes } from "@/lib/db/dismissed-names";
 import { isPayoutFailure, unrecognizedPayoutMessage } from "@/lib/csv/ledger";
 import { resolveItemId } from "@/lib/db/aliases";
 import { getSettings } from "@/lib/db/settings";
@@ -143,6 +144,9 @@ export function buildLedgerReport(db: DB): LedgerReport {
   }
 
   const unmapped = new Set<string>();
+  // Names the user marked as deliberately unmapped stay out of the warning.
+  // Their sales still count at $0 cost -- dismissing hides the prompt, not the gap.
+  const dismissed = dismissedCodes(db);
   const unrecognizedPayouts = new Set<string>();
   const shows: ReportShow[] = [];
 
@@ -204,7 +208,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
             unitCostCents, qty: 0, costCents: 0, revenueCents: 0, profitCents: 0,
           };
           productMap.set(t.productName, line);
-          if (itemId == null) unmapped.add(t.productName);
+          if (itemId == null && !dismissed.has(t.productName)) unmapped.add(t.productName);
         }
         line.qty += 1;
         line.revenueCents += t.amountCents;

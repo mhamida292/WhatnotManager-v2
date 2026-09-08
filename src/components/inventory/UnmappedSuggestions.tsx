@@ -5,6 +5,15 @@ import { Card } from "@/components/ui/Card";
 import { ItemCombobox } from "@/components/ItemCombobox";
 import type { MapSuggestion } from "@/lib/calc/map-suggestions";
 
+async function dismiss(productName: string) {
+  await fetch("/api/aliases/dismiss", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productName }),
+  });
+  location.reload();
+}
+
 async function confirmAlias(productName: string, itemId: number) {
   await fetch("/api/aliases", {
     method: "POST",
@@ -43,6 +52,16 @@ function Row({ s, items, idx }: { s: MapSuggestion; items: { id: number; name: s
         >
           {itemId === s.suggestedItemId && s.confident ? "Confirm" : "Map"}
         </Button>
+        {/* For names that will never be one inventory item -- an on-screen bundle
+            placeholder, or revenue with no merchandise behind it. Hides the prompt;
+            the sales keep counting at $0 cost, which the restore list spells out. */}
+        <button
+          type="button"
+          onClick={() => dismiss(s.productName)}
+          className="text-xs text-slate-400 underline-offset-2 hover:text-slate-700 hover:underline"
+        >
+          Not a product
+        </button>
       </div>
     </div>
   );
