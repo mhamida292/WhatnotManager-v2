@@ -70,6 +70,17 @@ export default async function Dashboard() {
         />
         <Stat label="Inventory spend" value={<Money cents={d.netInventorySpendCents} />} />
         <Stat label="Expenses" value={<Money cents={d.totalExpensesCents} />} />
+        <Stat
+          label="Total wages"
+          value={<Money cents={d.totalLaborCents} />}
+          // Wages on a date with no show are deliberately absent from the figure
+          // above and from every show's net -- they belong to no show. Naming the
+          // amount is the only way that exclusion is visible rather than a
+          // silent gap between what payroll says and what profit reflects.
+          sub={d.unallocatedLaborCents > 0
+            ? <><Money cents={d.unallocatedLaborCents} /> on days with no show — not in any net</>
+            : undefined}
+        />
         <Stat label="Units on hand" value={unitsOnHand} />
         {rep.pool && <Stat label="Pool avg cost/unit" value={<Money cents={rep.pool.currentAvgUnitCostCents} />} />}
         {rep.pool && <Stat label="Pool value on hand" value={<Money cents={rep.pool.valueOnHandCents} />} />}
