@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { parseLedger, ledgerShowDate, parseAmountCents, extractSaleNumber } from "@/lib/csv/ledger";
+import { parseLedger, ledgerShowDate, parseAmountCents, extractSaleNumber, unrecognizedPayoutMessage } from "@/lib/csv/ledger";
 
 describe("extractSaleNumber", () => {
   it("pulls the trailing #N sequence number from a sale message", () => {
@@ -75,6 +75,36 @@ describe("refund classification", () => {
     expect(parseLedger(csv("New Seller Sales Match Bonus", "ADJUSTMENT"))[0].kind).toBe("bonus");
     expect(parseLedger(csv("Seller purchased Show Boost for ...", "ADJUSTMENT"))[0].kind).toBe("other");
     expect(parseLedger(csv("Approved Insurance Claim for shipment 1", "ADJUSTMENT"))[0].kind).toBe("other");
+  });
+});
+
+describe("payout failure classification", () => {
+  const row = (msg: string, amount: string) =>
+    `"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Sep 7, 2026, 4:42:20 AM","${amount}","","","${msg}","completed","ADJUSTMENT",""`;
+
+  it("reads a payout failure refund as a payout-line event, not revenue", () => {
+    // Whatnot never marks the original PAYOUT as failed -- it stays 'completed'
+    // and the money comes back days later as this ADJUSTMENT. Classifying it as
+    // 'payout' cancels the withdrawal instead of booking a second sale.
+    const r = parseLedger(row("Payout failure refund for 1318550423", "$13,723.07"))[0];
+    expect(r.kind).toBe("payout");
+    expect(r.amountCents).toBe(1372307);
+  });
+
+  it("wins over the generic refund match, whose word it contains", () => {
+    expect(parseLedger(row("Payout Failure Refund for 99", "$1.00"))[0].kind).toBe("payout");
+  });
+
+  it("leaves ordinary order refunds alone", () => {
+    expect(parseLedger(row("Reversal of sales transaction for order refund", "-$6.44"))[0].kind).toBe("refund");
+  });
+
+  it("flags an unrecognized payout-ish adjustment instead of silently banking it", () => {
+    expect(unrecognizedPayoutMessage("ADJUSTMENT", "Payout reversal for 123")).toBe(true);
+    expect(unrecognizedPayoutMessage("ADJUSTMENT", "Payout failure refund for 1")).toBe(false);
+    expect(unrecognizedPayoutMessage("ADJUSTMENT", "Reversal of sales transaction for order refund")).toBe(false);
+    expect(unrecognizedPayoutMessage("SALES", "Earnings for selling a payout themed mug")).toBe(false);
   });
 });
 

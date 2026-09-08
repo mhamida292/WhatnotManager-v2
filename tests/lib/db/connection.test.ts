@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { SCHEMA } from "@/lib/db/schema";
-import { createDb, migrate, migrateLedgerPayoutKind, checkpointAndClose } from "@/lib/db/connection";
+import { createDb, migrate, migrateLedgerPayoutKind, migrateLedgerPayoutFailureKind, checkpointAndClose } from "@/lib/db/connection";
 
 describe("createDb", () => {
   it("creates all tables in an in-memory db", () => {
@@ -108,5 +108,51 @@ describe("createDb", () => {
       "SELECT name FROM sqlite_master WHERE type='table' AND name='brother_transactions'"
     ).get();
     expect(t).toBeUndefined();
+  });
+});
+
+describe("migrateLedgerPayoutFailureKind", () => {
+  /** A DB carrying the bug: the Aug 27 withdrawal and the Sep 7 credit that
+   *  cancels it, with the credit mislabeled 'refund' so it counted as revenue. */
+  function buggyDb() {
+    const db = createDb(":memory:");
+    db.prepare("INSERT INTO shows (id, show_date, payout_cents, source_hash) VALUES (1,'2026-08-27',0,'ledger')").run();
+    db.prepare("INSERT INTO shows (id, show_date, payout_cents, source_hash) VALUES (2,'2026-09-07',0,'ledger')").run();
+    const ins = db.prepare(
+      `INSERT INTO ledger_transactions (show_id, created_at, show_date, amount_cents, kind, message, txn_type, dedup_key)
+       VALUES (?,?,?,?,?,?,?,?)`
+    );
+    ins.run(1, "Aug 27, 2026, 4:56:43 PM", "2026-08-27", -1372307, "payout", "Payout request: STRIPE acct_x", "PAYOUT", "k1");
+    ins.run(2, "Sep 7, 2026, 4:42:20 AM", "2026-09-07", 1372307, "refund", "Payout failure refund for 1318550423", "ADJUSTMENT", "k2");
+    ins.run(2, "Sep 7, 2026, 5:00:00 PM", "2026-09-07", 2000, "sale", "Earnings for selling a Thing", "SALES", "k3");
+    db.prepare("UPDATE shows SET payout_cents = (SELECT COALESCE(SUM(amount_cents),0) FROM ledger_transactions WHERE show_id = shows.id AND kind <> 'payout')").run();
+    return db;
+  }
+
+  it("reclassifies a payout failure refund and drops it out of the show payout", () => {
+    const db = buggyDb();
+    expect((db.prepare("SELECT payout_cents c FROM shows WHERE id=2").get() as any).c).toBe(1374307); // inflated
+
+    migrateLedgerPayoutFailureKind(db);
+
+    expect((db.prepare("SELECT kind k FROM ledger_transactions WHERE dedup_key='k2'").get() as any).k).toBe("payout");
+    // The show keeps only its real $20 sale.
+    expect((db.prepare("SELECT payout_cents c FROM shows WHERE id=2").get() as any).c).toBe(2000);
+    // Withdrawal and its reversal now cancel: nothing actually reached the bank.
+    const w = db.prepare("SELECT COALESCE(SUM(amount_cents),0) s FROM ledger_transactions WHERE kind='payout'").get() as any;
+    expect(w.s).toBe(0);
+  });
+
+  it("is idempotent and leaves ordinary refunds alone", () => {
+    const db = buggyDb();
+    db.prepare(
+      `INSERT INTO ledger_transactions (show_id, created_at, show_date, amount_cents, kind, message, txn_type, dedup_key)
+       VALUES (2,'Sep 7, 2026','2026-09-07',-644,'refund','Reversal of sales transaction for order refund','ADJUSTMENT','k4')`
+    ).run();
+    migrateLedgerPayoutFailureKind(db);
+    const after = (db.prepare("SELECT payout_cents c FROM shows WHERE id=2").get() as any).c;
+    migrateLedgerPayoutFailureKind(db);
+    expect((db.prepare("SELECT payout_cents c FROM shows WHERE id=2").get() as any).c).toBe(after);
+    expect((db.prepare("SELECT kind k FROM ledger_transactions WHERE dedup_key='k4'").get() as any).k).toBe("refund");
   });
 });

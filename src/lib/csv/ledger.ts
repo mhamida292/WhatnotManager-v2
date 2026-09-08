@@ -49,10 +49,37 @@ export function parseAmountCents(amount: string): number {
   return toCents(num) * (neg ? -1 : 1);
 }
 
+/** A payout that bounced. Whatnot never marks the original PAYOUT row as failed --
+ *  its Status stays 'completed' -- and returns the money days later as a separate
+ *  ADJUSTMENT credit. Only the message links the two. */
+const PAYOUT_FAILURE_RE = /payout\s+failure/i;
+
+/** True for the ADJUSTMENT credit that returns a bounced payout's money. Stored as
+ *  kind 'payout' so it cancels the withdrawal, but worth showing: a failed payout
+ *  means money you expected in the bank never arrived. */
+export function isPayoutFailure(message: string): boolean {
+  return PAYOUT_FAILURE_RE.test(message ?? "");
+}
+
+/** An ADJUSTMENT that talks about a payout but matches no rule we know. Whatnot
+ *  could reword "Payout failure refund" at any time, and the fallback for an
+ *  unmatched adjustment is 'other', which counts as show revenue -- so a silent
+ *  miss reads as profit. Callers surface these for a human to look at. */
+export function unrecognizedPayoutMessage(txnType: string, message: string): boolean {
+  if (txnType !== "ADJUSTMENT") return false;
+  if (!/payout/i.test(message)) return false;
+  return !PAYOUT_FAILURE_RE.test(message);
+}
+
 function classify(txnType: string, message: string): LedgerKind {
   if (txnType === "PAYOUT") return "payout";
   if (txnType === "TIP") return "tip";
   if (txnType === "ADJUSTMENT") {
+    // Before the refund test, whose word this message contains: money returning
+    // from a failed payout is a payout-line event, not a sale and not an order
+    // refund. As 'payout' it cancels the original withdrawal and stays out of
+    // show profit; as 'refund' it would be booked as revenue for that day.
+    if (PAYOUT_FAILURE_RE.test(message)) return "payout";
     if (/refund/i.test(message)) return "refund";
     return /Sales Match Bonus/i.test(message) ? "bonus" : "other";
   }

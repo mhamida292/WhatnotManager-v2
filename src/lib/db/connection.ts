@@ -71,6 +71,7 @@ export function migrate(db: DB): void {
   backfillPurchases(db);
   migrateLedgerPayoutKind(db);
   migrateLedgerRefundKind(db);
+  migrateLedgerPayoutFailureKind(db); // after the refund relabel: a payout failure outranks it
   const icols = (db.prepare("PRAGMA table_info(invoices)").all() as { name: string }[]).map((c) => c.name);
   if (!icols.includes("direction")) db.exec("ALTER TABLE invoices ADD COLUMN direction TEXT NOT NULL DEFAULT 'purchase'");
   if (!icols.includes("customer")) db.exec("ALTER TABLE invoices ADD COLUMN customer TEXT");
@@ -219,7 +220,38 @@ export function migrateLedgerRefundKind(db: DB): void {
   // even on a DB whose CHECK was already widened on a prior boot (so the rebuild above
   // is skipped). Once a row is 'refund' the predicate no longer matches it.
   db.prepare(
-    "UPDATE ledger_transactions SET kind='refund' WHERE kind='other' AND txn_type='ADJUSTMENT' AND LOWER(message) LIKE '%refund%'"
+    `UPDATE ledger_transactions SET kind='refund'
+      WHERE kind='other' AND txn_type='ADJUSTMENT' AND LOWER(message) LIKE '%refund%'
+        AND LOWER(message) NOT LIKE '%payout failure%'`
+  ).run();
+}
+
+/** Idempotent: relabel a bounced payout's return credit as 'payout' and recompute
+ *  the shows it inflated.
+ *
+ *  Whatnot never marks the original PAYOUT row as failed -- its Status stays
+ *  'completed' -- and refunds the money days later as an ADJUSTMENT whose message
+ *  happens to contain the word "refund". Imported before this was understood, that
+ *  credit landed as kind 'refund', which the report folds into show revenue: the
+ *  day's profit gained the full payout, and the withdrawal it reversed still read
+ *  as money paid to the bank. As 'payout' the pair cancels and neither is income.
+ *
+ *  Runs on every boot rather than once behind a schema guard, because the rows it
+ *  fixes were written by a correct-looking import, not by an old schema. Once a
+ *  row is 'payout' the predicate no longer matches it. */
+export function migrateLedgerPayoutFailureKind(db: DB): void {
+  const changed = db.prepare(
+    `UPDATE ledger_transactions SET kind='payout'
+      WHERE kind <> 'payout' AND txn_type='ADJUSTMENT' AND LOWER(message) LIKE '%payout failure%'`
+  ).run().changes;
+  if (changed === 0) return;
+  // Only ledger-sourced shows derive payout_cents from these rows; a manually
+  // entered show's payout is typed in and must not be recomputed away.
+  db.prepare(
+    `UPDATE shows SET payout_cents = (
+       SELECT COALESCE(SUM(amount_cents),0) FROM ledger_transactions
+       WHERE show_id = shows.id AND kind <> 'payout'
+     ) WHERE source_hash='ledger'`
   ).run();
 }
 

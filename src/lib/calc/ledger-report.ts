@@ -2,6 +2,7 @@ import type { DB } from "@/lib/db/connection";
 import { listShows } from "@/lib/db/shows";
 import { listItems } from "@/lib/db/inventory";
 import { listLedgerTransactions } from "@/lib/db/ledger";
+import { isPayoutFailure, unrecognizedPayoutMessage } from "@/lib/csv/ledger";
 import { resolveItemId } from "@/lib/db/aliases";
 import { getSettings } from "@/lib/db/settings";
 import { splitProfit } from "./show-pnl";
@@ -55,6 +56,7 @@ export interface ReportShow {
   otherTotalCents: number;
   payoutCents: number;
   withdrawnToBankCents: number;   // Σ of bank-withdrawal (payout-kind) amounts; signed (negative)
+  payoutFailureCents: number;     // Σ of money returned by a bounced payout; positive, already inside withdrawnToBankCents
   cogsCents: number;
   shippingSuppliesCents: number;
   netCents: number;
@@ -101,11 +103,16 @@ export interface LedgerReport {
     ownerShareCents: number;
     partnerShareCents: number;
     withdrawnToBankCents: number;
+    payoutFailureCents: number;
     unitsSold: number;
   };
   wholesale: WholesaleRollup;
   unmappedNames: string[];
   unmappedCount: number;
+  /** ADJUSTMENT messages mentioning a payout that no rule recognised. They fall
+   *  through to 'other' and count as revenue, so a new Whatnot wording surfaces
+   *  here instead of silently reading as profit. */
+  unrecognizedPayoutMessages: string[];
   pool?: PoolSummary;
 }
 
@@ -131,6 +138,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
   }
 
   const unmapped = new Set<string>();
+  const unrecognizedPayouts = new Set<string>();
   const shows: ReportShow[] = [];
 
   const allShows = listShows(db);
@@ -143,10 +151,17 @@ export function buildLedgerReport(db: DB): LedgerReport {
     const bundleLines: ReportProductLine[] = [];
     const pooledSales: ReportPooledSale[] = [];
     const componentsByTxn = getBundleComponentsByTxn(db, s.id);
-    let giveaway = 0, giveawayCount = 0, tip = 0, bonus = 0, other = 0, payout = 0, withdrawn = 0, saleCount = 0;
+    let giveaway = 0, giveawayCount = 0, tip = 0, bonus = 0, other = 0, payout = 0, withdrawn = 0, saleCount = 0, payoutFailure = 0;
 
     for (const t of rows) {
-      if (t.kind === "payout") { withdrawn += t.amountCents; continue; }
+      if (t.kind === "payout") {
+        withdrawn += t.amountCents;
+        // A returned payout still nets to zero against its withdrawal; tracked
+        // separately only so the UI can say the money never reached the bank.
+        if (isPayoutFailure(t.message ?? "")) payoutFailure += t.amountCents;
+        continue;
+      }
+      if (unrecognizedPayoutMessage(t.txnType ?? "", t.message ?? "")) unrecognizedPayouts.add(t.message!);
       payout += t.amountCents;
       if (t.kind === "sale") saleCount += 1;
       if (pool && t.kind === "sale") {
@@ -213,7 +228,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
       pooledSales: pool ? pooledSales : undefined,
       giveawayTotalCents: giveaway, giveawayCount, giveawayCostCents, giveawayUnallocated,
       tipTotalCents: tip, bonusTotalCents: bonus, otherTotalCents: other,
-      payoutCents: payout, withdrawnToBankCents: withdrawn, cogsCents, shippingSuppliesCents: s.shippingSuppliesCents, netCents, unitsSold, saleCount,
+      payoutCents: payout, withdrawnToBankCents: withdrawn, payoutFailureCents: payoutFailure, cogsCents, shippingSuppliesCents: s.shippingSuppliesCents, netCents, unitsSold, saleCount,
     });
   }
 
@@ -244,6 +259,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
   const shippingSuppliesCents = shows.reduce((sum, s) => sum + s.shippingSuppliesCents, 0);
   let netCents = shows.reduce((sum, s) => sum + s.netCents, 0);
   const withdrawnToBankCents = shows.reduce((sum, s) => sum + s.withdrawnToBankCents, 0);
+  const payoutFailureCents = shows.reduce((sum, s) => sum + s.payoutFailureCents, 0);
   let unitsSold = shows.reduce((sum, s) => sum + s.unitsSold, 0);
 
   // fold ONLY paid wholesale into the grand totals
@@ -267,8 +283,9 @@ export function buildLedgerReport(db: DB): LedgerReport {
   return {
     shows,
     giveawayUnitCents: settings.giveawayUnitCents,
-    totals: { revenueCents, cogsCents, giveawayCostCents, shippingSuppliesCents, netCents, ownerShareCents, partnerShareCents, withdrawnToBankCents, unitsSold },
+    totals: { revenueCents, cogsCents, giveawayCostCents, shippingSuppliesCents, netCents, ownerShareCents, partnerShareCents, withdrawnToBankCents, payoutFailureCents, unitsSold },
     wholesale,
+    unrecognizedPayoutMessages: [...unrecognizedPayouts].sort(),
     unmappedNames: [...unmapped].sort(),
     unmappedCount: unmapped.size,
     pool: poolSummary,

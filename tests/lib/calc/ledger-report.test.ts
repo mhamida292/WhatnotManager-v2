@@ -262,3 +262,48 @@ describe("buildLedgerReport — pooled costing mode", () => {
     expect(rep.shows[0].products.length).toBeGreaterThan(0);
   });
 });
+
+describe("buildLedgerReport — failed payouts", () => {
+  // The real shape from Whatnot: the withdrawal is never marked failed, and the
+  // money returns 11 days later as an ADJUSTMENT credit on a day that had a show.
+  const PAYOUT_CSV = `"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 12, 2026, 6:00:00 AM","-$100.00","","","Payout request: STRIPE acct_x","completed","PAYOUT",""
+"Jun 23, 2026, 4:42:20 AM","$100.00","","","Payout failure refund for 1318550423","completed","ADJUSTMENT",""
+"Jun 23, 2026, 5:00:00 PM","$5.00","L9","O9","Earnings for selling a Cheese Squishy #1","completed","SALES",""`;
+
+  it("keeps the returned money out of show profit and out of paid-to-bank", () => {
+    const db2 = createDb(":memory:");
+    const cheese = insertItem(db2, { name: "Cheese", unitCostCents: 0, qtyPurchased: 0, lotId: null });
+    setAlias(db2, "Cheese Squishy", cheese);
+    saveLedger(db2, parseLedger(PAYOUT_CSV));
+    const rep = buildLedgerReport(db2);
+
+    const jun23 = rep.shows.find((s) => s.showDate === "2026-06-23")!;
+    expect(jun23.payoutCents).toBe(500);   // the $5 sale only, not $105
+    expect(jun23.netCents).toBe(500);
+
+    // The withdrawal and its reversal cancel: nothing reached the bank.
+    expect(rep.totals.withdrawnToBankCents).toBe(0);
+    // ...but the failure is still visible rather than silently netted away.
+    expect(rep.totals.payoutFailureCents).toBe(10000);
+    expect(jun23.payoutFailureCents).toBe(10000);
+  });
+
+  it("reports no failure when a payout simply succeeded", () => {
+    const db2 = createDb(":memory:");
+    saveLedger(db2, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 12, 2026, 6:00:00 AM","-$100.00","","","Payout request: STRIPE acct_x","completed","PAYOUT",""`));
+    const rep = buildLedgerReport(db2);
+    expect(rep.totals.withdrawnToBankCents).toBe(-10000);
+    expect(rep.totals.payoutFailureCents).toBe(0);
+    expect(rep.unrecognizedPayoutMessages).toEqual([]);
+  });
+
+  it("surfaces an adjustment that mentions a payout but matches no known rule", () => {
+    const db2 = createDb(":memory:");
+    saveLedger(db2, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 12, 2026, 6:00:00 AM","$42.00","","","Payout reversal for 9911","completed","ADJUSTMENT",""`));
+    const rep = buildLedgerReport(db2);
+    expect(rep.unrecognizedPayoutMessages).toEqual(["Payout reversal for 9911"]);
+  });
+});

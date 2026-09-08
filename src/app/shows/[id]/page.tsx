@@ -58,6 +58,12 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
 
         {show.products.length > 0 && <ProductsTable products={show.products} variant="show" />}
       </div>
+      {show.payoutFailureCents > 0 && (
+        <p className="text-sm text-amber-700">
+          ⚠ A payout of <Money cents={show.payoutFailureCents} /> failed and was returned to your Whatnot
+          balance on this date. It is not counted as profit here, and it never reached your bank.
+        </p>
+      )}
       <Card title="Giveaway Allocations">
         <GiveawayAllocationEditor showId={show.showId} detectedCount={show.giveawayCount} />
         {show.giveawayUnallocated && (

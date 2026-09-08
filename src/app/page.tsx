@@ -33,6 +33,18 @@ export default async function Dashboard() {
     <div className="space-y-6">
       <PageHeader title="Dashboard" subtitle="Profit across all your Whatnot shows" />
 
+      {rep.unrecognizedPayoutMessages.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <p className="font-medium">
+            ⚠ {rep.unrecognizedPayoutMessages.length} payout-related adjustment(s) weren&apos;t recognised — they are
+            counting as show profit, which may overstate your net.
+          </p>
+          <ul className="mt-1 list-disc pl-5">
+            {rep.unrecognizedPayoutMessages.map((m) => <li key={m} className="font-mono text-xs">{m}</li>)}
+          </ul>
+        </div>
+      )}
+
       <Card>
         <div className="flex items-baseline justify-between">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -46,7 +58,16 @@ export default async function Dashboard() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Gross sales" value={<Money cents={d.grossSalesCents} />} />
         <Stat label="Total payout" value={<Money cents={d.totalPayoutCents} />} />
-        <Stat label="Paid to bank" value={<Money cents={d.paidToBankCents} />} />
+        <Stat
+          label="Paid to bank"
+          value={<Money cents={d.paidToBankCents} />}
+          // A bounced payout leaves the withdrawal and its return cancelling out,
+          // so the figure above is already right -- but silence would hide that
+          // money you expected in the bank never arrived.
+          sub={rep.totals.payoutFailureCents > 0
+            ? <><Money cents={rep.totals.payoutFailureCents} /> returned by a failed payout</>
+            : undefined}
+        />
         <Stat label="Inventory spend" value={<Money cents={d.netInventorySpendCents} />} />
         <Stat label="Expenses" value={<Money cents={d.totalExpensesCents} />} />
         <Stat label="Units on hand" value={unitsOnHand} />
