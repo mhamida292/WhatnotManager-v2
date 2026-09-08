@@ -61,7 +61,7 @@ export function rangeFromParams(p: { month?: string; from?: string; to?: string;
   return undefined;
 }
 
-type Mode = "week" | "month" | "all";
+export type Mode = "week" | "month" | "all";
 
 /** Build a period URL for any page. Kept out of the component so the rule is
  *  testable without rendering React and a router. */

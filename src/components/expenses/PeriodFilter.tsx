@@ -1,8 +1,6 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { currentIsoWeek, periodHref, periodMode } from "@/lib/ui/expense-range";
-
-type Mode = "week" | "month" | "all";
+import { currentIsoWeek, periodHref, periodMode, type Mode } from "@/lib/ui/expense-range";
 
 export function PeriodFilter({ basePath = "/expenses", defaultMode = "week" }: { basePath?: string; defaultMode?: Mode } = {}) {
   const router = useRouter();
