@@ -94,6 +94,11 @@ export function migrate(db: DB): void {
 
   // Retired 2026-07-27: the brother cost-sharing concept was removed. The table
   // was unreachable (no writer) and its rows contributed 0 to every calculation.
+  // Per-item "how many units sold" resolves through the alias map on every
+  // inventory read. Without this, each item is a full pass over the whole ledger
+  // -- items x ledger rows per page, which grows quadratically as shows import.
+  // Covering (product_name, kind) so the count never touches the table.
+  db.exec("CREATE INDEX IF NOT EXISTS idx_lt_product_kind ON ledger_transactions(product_name, kind)");
   migratePayrollShifts(db);
   // After the reshape, never before: on an existing file SCHEMA has already run
   // against the old table, so this is the first point work_date is guaranteed
