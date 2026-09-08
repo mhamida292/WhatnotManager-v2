@@ -16,11 +16,12 @@ The underlying math behind every number the app shows. All money is stored as
 | **Owner share / Partner share** | Split of total net (see split rule). |
 | **Net inventory spend** | Cash tied up in stock (balance-sheet, see below). |
 | **Total expenses** | Σ of every Expenses-page entry's `amount_cents`. |
+| **Total wages** | Σ of payroll amounts charged to shows. Unallocated wages are reported separately. |
 
 ## Per-show net profit — the core P&L (`ledger-report.ts`)
 
 ```
-net = payout − COGS − giveawayMerchCost − shippingSupplies
+net = payout − COGS − giveawayMerchCost − shippingSupplies − labor
 ```
 
 - **payout** = sales + tips + bonus + giveaway-fee + other. The giveaway *fee*
@@ -34,6 +35,11 @@ net = payout − COGS − giveawayMerchCost − shippingSupplies
   the real merchandise given away, from the per-show giveaway allocations.
   Separate from the giveaway *fee* in payout. Rounded once.
 - **shippingSupplies** = the per-show shipping amount (default $5.00 / 500¢).
+- **labor** = wages recorded for the show's date, split evenly across that date's
+  sessions (remainder cent to the earliest session). Resolved **live** from
+  `payroll_entries` at report time, like COGS. Wages on a date with **no** show
+  cannot belong to a net; they are reported separately as **unallocated labor**
+  and are not subtracted anywhere.
 
 ## Owner / partner split (`show-pnl.ts` → `splitProfit`)
 

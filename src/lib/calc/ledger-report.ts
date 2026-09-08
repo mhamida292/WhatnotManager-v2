@@ -2,6 +2,8 @@ import type { DB } from "@/lib/db/connection";
 import { listShows } from "@/lib/db/shows";
 import { listItems } from "@/lib/db/inventory";
 import { listLedgerTransactions } from "@/lib/db/ledger";
+import { allocateLabor } from "./labor-allocation";
+import { listPayroll } from "@/lib/db/payroll";
 import { isPayoutFailure, unrecognizedPayoutMessage } from "@/lib/csv/ledger";
 import { resolveItemId } from "@/lib/db/aliases";
 import { getSettings } from "@/lib/db/settings";
@@ -59,6 +61,7 @@ export interface ReportShow {
   payoutFailureCents: number;     // Σ of money returned by a bounced payout; positive, already inside withdrawnToBankCents
   cogsCents: number;
   shippingSuppliesCents: number;
+  laborCents: number;             // wages for the day this show ran, split across its sessions
   netCents: number;
   unitsSold: number;            // Σ product-line qty (each sale + each bundle order = 1)
   saleCount: number;            // count of kind==='sale' transactions per show
@@ -99,6 +102,8 @@ export interface LedgerReport {
     cogsCents: number;
     giveawayCostCents: number;
     shippingSuppliesCents: number;
+    laborCents: number;
+    unallocatedLaborCents: number;   // wages on dates with no show; NOT inside netCents
     netCents: number;
     ownerShareCents: number;
     partnerShareCents: number;
@@ -142,6 +147,13 @@ export function buildLedgerReport(db: DB): LedgerReport {
   const shows: ReportShow[] = [];
 
   const allShows = listShows(db);
+
+  // Labor resolves live at report time, like COGS through the alias map --
+  // nothing is stored per show, so editing a shift reflows every report.
+  const labor = allocateLabor(
+    listPayroll(db).map((p) => ({ workDate: p.workDate, amountCents: p.amountCents })),
+    allShows.map((s) => ({ id: s.id, showDate: s.showDate, sessionSeq: s.sessionSeq })),
+  );
   const dateCounts = new Map<string, number>();
   for (const s of allShows) dateCounts.set(s.showDate, (dateCounts.get(s.showDate) ?? 0) + 1);
 
@@ -214,7 +226,8 @@ export function buildLedgerReport(db: DB): LedgerReport {
       allocs.reduce((sum, a) => sum + a.count * (giveawayUnit.get(a.giveawayItemId) ?? 0), 0)
     );
     const giveawayUnallocated = giveawayCount > 0 && allocs.length === 0;
-    const netCents = payout - cogsCents - giveawayCostCents - s.shippingSuppliesCents;
+    const laborCents = labor.byShowId.get(s.id) ?? 0;
+    const netCents = payout - cogsCents - giveawayCostCents - s.shippingSuppliesCents - laborCents;
     const times = rows.map((t) => ledgerTimeOfDaySeconds(t.createdAt));
     const timeRange = times.length
       ? `${secondsToClock(Math.min(...times))}–${secondsToClock(Math.max(...times))}`
@@ -228,7 +241,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
       pooledSales: pool ? pooledSales : undefined,
       giveawayTotalCents: giveaway, giveawayCount, giveawayCostCents, giveawayUnallocated,
       tipTotalCents: tip, bonusTotalCents: bonus, otherTotalCents: other,
-      payoutCents: payout, withdrawnToBankCents: withdrawn, payoutFailureCents: payoutFailure, cogsCents, shippingSuppliesCents: s.shippingSuppliesCents, netCents, unitsSold, saleCount,
+      payoutCents: payout, withdrawnToBankCents: withdrawn, payoutFailureCents: payoutFailure, cogsCents, shippingSuppliesCents: s.shippingSuppliesCents, laborCents, netCents, unitsSold, saleCount,
     });
   }
 
@@ -257,6 +270,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
   let cogsCents = shows.reduce((sum, s) => sum + s.cogsCents, 0);
   const giveawayCostCents = shows.reduce((sum, s) => sum + s.giveawayCostCents, 0);
   const shippingSuppliesCents = shows.reduce((sum, s) => sum + s.shippingSuppliesCents, 0);
+  const laborCents = shows.reduce((sum, s) => sum + s.laborCents, 0);
   let netCents = shows.reduce((sum, s) => sum + s.netCents, 0);
   const withdrawnToBankCents = shows.reduce((sum, s) => sum + s.withdrawnToBankCents, 0);
   const payoutFailureCents = shows.reduce((sum, s) => sum + s.payoutFailureCents, 0);
@@ -283,7 +297,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
   return {
     shows,
     giveawayUnitCents: settings.giveawayUnitCents,
-    totals: { revenueCents, cogsCents, giveawayCostCents, shippingSuppliesCents, netCents, ownerShareCents, partnerShareCents, withdrawnToBankCents, payoutFailureCents, unitsSold },
+    totals: { revenueCents, cogsCents, giveawayCostCents, shippingSuppliesCents, laborCents, unallocatedLaborCents: labor.unallocatedCents, netCents, ownerShareCents, partnerShareCents, withdrawnToBankCents, payoutFailureCents, unitsSold },
     wholesale,
     unrecognizedPayoutMessages: [...unrecognizedPayouts].sort(),
     unmappedNames: [...unmapped].sort(),

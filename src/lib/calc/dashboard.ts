@@ -13,6 +13,8 @@ export interface DashboardSummary {
   partnerShareCents: number;
   netInventorySpendCents: number;
   totalExpensesCents: number;
+  totalLaborCents: number;
+  unallocatedLaborCents: number;
 }
 
 export function dashboardSummary(db: DB): DashboardSummary {
@@ -34,5 +36,7 @@ export function dashboardSummary(db: DB): DashboardSummary {
     partnerShareCents: report.totals.partnerShareCents,
     netInventorySpendCents,
     totalExpensesCents: totalExpensesCents(db),
+    totalLaborCents: report.totals.laborCents,
+    unallocatedLaborCents: report.totals.unallocatedLaborCents,
   };
 }
