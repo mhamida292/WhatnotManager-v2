@@ -39,8 +39,41 @@ function isValidTableName(table: string): boolean {
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(table);
 }
 
+interface ColumnInfo { name: string; type: string; notNull: boolean; hasDefault: boolean }
+
+function columnInfo(db: DB, table: string): ColumnInfo[] {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as
+    { name: string; type: string; notnull: number; dflt_value: unknown; pk: number }[];
+  return rows.map((c) => ({
+    name: c.name,
+    type: String(c.type ?? "").toUpperCase(),
+    // An INTEGER PRIMARY KEY is the rowid alias: omitting it is fine, SQLite
+    // assigns one, so it never needs a placeholder.
+    notNull: c.notnull === 1 && !(c.pk === 1 && String(c.type ?? "").toUpperCase() === "INTEGER"),
+    hasDefault: c.dflt_value !== null,
+  }));
+}
+
 function columns(db: DB, table: string): string[] {
-  return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+  return columnInfo(db, table).map((c) => c.name);
+}
+
+/** Columns this app renamed. Old file column -> live column, per table. Applied
+ *  before the generic drift handling, so a rename carries its value across
+ *  instead of being dropped as unknown and refilled with a placeholder. */
+const RENAMED_COLUMNS: Record<string, Record<string, string>> = {
+  // A pay period became a worked shift. period_start is the day the work happened,
+  // which is what labor allocation keys on; period_end carried no extra information
+  // for a single-day entry and start/end clock times simply did not exist.
+  payroll_entries: { period_start: "work_date" },
+};
+
+/** A stand-in for a NOT NULL column the file cannot supply. Empty rather than
+ *  invented: a blank work_date leaves those wages unallocated (reported, never
+ *  subtracted from a show) instead of charging them to a day they may not
+ *  belong to. */
+function placeholder(type: string): string | number {
+  return type.includes("INT") || type.includes("REAL") || type.includes("NUM") ? 0 : "";
 }
 
 /** Row count per table, omitting empty ones — used to tell the user exactly what
@@ -114,16 +147,44 @@ function insertTolerant(
   fileCols: string[],
   rows: (string | number | null)[][],
 ): { inserted: number; drift: ColumnDriftEntry | null; skipped: boolean } {
-  const live = columns(db, table);
-  const keep = fileCols.map((c, i) => ({ c, i })).filter(({ c }) => live.includes(c));
-  const dropped = fileCols.filter((c) => !live.includes(c));
-  const added = live.filter((c) => !fileCols.includes(c));
+  const info = columnInfo(db, table);
+  const live = info.map((c) => c.name);
+  const byName = new Map(info.map((c) => [c.name, c]));
+  const renames = RENAMED_COLUMNS[table] ?? {};
+
+  // A file column maps to itself, or to whatever this app renamed it to.
+  const target = (c: string): string | null => {
+    if (live.includes(c)) return c;
+    const renamed = renames[c];
+    return renamed && live.includes(renamed) ? renamed : null;
+  };
+
+  const keep = fileCols.map((c, i) => ({ c: target(c), i })).filter((k): k is { c: string; i: number } => k.c !== null);
+  const dropped = fileCols.filter((c) => target(c) === null);
+  const added = live.filter((c) => !keep.some((k) => k.c === c));
   const drift = dropped.length > 0 || added.length > 0 ? { table, added, dropped } : null;
   if (keep.length === 0) return { inserted: 0, drift: null, skipped: true };
+
+  // A live NOT NULL column with no default that the file cannot supply would
+  // abort the whole restore -- and the restore is one transaction, so a single
+  // such column loses the entire backup. Give it a placeholder and let the drift
+  // report say so, rather than failing the import.
+  const filled = added.filter((c) => byName.get(c)!.notNull && !byName.get(c)!.hasDefault);
+  const insertCols = [...keep.map((k) => k.c), ...filled];
+
   const ins = db.prepare(
-    `INSERT INTO ${table} (${keep.map(({ c }) => `"${c}"`).join(", ")}) VALUES (${keep.map(() => "?").join(", ")})`,
+    `INSERT INTO ${table} (${insertCols.map((c) => `"${c}"`).join(", ")}) VALUES (${insertCols.map(() => "?").join(", ")})`,
   );
-  for (const row of rows) ins.run(...keep.map(({ i }) => row[i]));
+  for (const row of rows) {
+    const values = keep.map(({ c, i }) => {
+      const v = row[i];
+      // A column that was nullable before and is NOT NULL now can still hold a
+      // null in an old file; the same placeholder keeps that row importable.
+      if (v === null && byName.get(c)!.notNull) return placeholder(byName.get(c)!.type);
+      return v;
+    });
+    ins.run(...values, ...filled.map((c) => placeholder(byName.get(c)!.type)));
+  }
   return { inserted: rows.length, drift, skipped: false };
 }
 

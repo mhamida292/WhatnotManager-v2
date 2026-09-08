@@ -6,6 +6,8 @@ import { insertExpense } from "@/lib/db/expenses";
 import { parseLedger } from "@/lib/csv/ledger";
 import { saveLedger } from "@/lib/db/ledger";
 import { getSettings, updateSettings } from "@/lib/db/settings";
+import { insertPayroll } from "@/lib/db/payroll";
+import { dismissProductName } from "@/lib/db/dismissed-names";
 import { TABLES, exportWorkbook, importWorkbook, BackupError } from "@/lib/backup/workbook";
 
 let db: DB;
@@ -49,6 +51,13 @@ function seed(db: DB) {
 "Jun 14, 2026, 09:00:00 AM","$100.00","L1","O1","Earnings for selling a Cheese Squishy #3","completed","SALES","a"
 "Jun 14, 2026, 05:00:00 PM","-$534.39","","","Payout to bank","completed","PAYOUT","b"`));
   updateSettings(db, { ...getSettings(db), ownerSharePct: 75, giveawayUnitCents: 400, defaultShippingSuppliesCents: 0, businessName: "DirectDealzz" });
+  // Payroll and dismissals too, or the round-trip below compares two empty
+  // tables and proves nothing about the newest columns.
+  insertPayroll(db, {
+    person: "Sam", workDate: "2026-06-14", startTime: "20:00", endTime: "01:00",
+    hours: 5, rateCents: 1500, amountCents: 7500, note: null,
+  });
+  dismissProductName(db, "BUNDLE ON SCREEN");
 }
 
 describe("importWorkbook", () => {
