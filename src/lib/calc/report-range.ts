@@ -44,9 +44,15 @@ export function narrowReportToRange(report: LedgerReport, range?: DateRange): Le
     0,
   );
 
+  // A dismissed name still has mapped: false on its product line -- only
+  // buildLedgerReport knows it was dismissed (it never made it into
+  // report.unmappedNames in the first place). Re-deriving from product lines
+  // alone would resurrect it, so intersect with what the unnarrowed report
+  // already decided is unmapped.
+  const original = new Set(report.unmappedNames);
   const unmapped = new Set<string>();
   for (const s of shows) {
-    for (const p of s.products) if (!p.mapped && !p.isBundle) unmapped.add(p.productName);
+    for (const p of s.products) if (!p.mapped && !p.isBundle && original.has(p.productName)) unmapped.add(p.productName);
   }
 
   return {

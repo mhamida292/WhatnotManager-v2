@@ -92,10 +92,39 @@ describe("narrowReportToRange", () => {
     const r = report([
       show("2026-07-05", { products: [line("Kept", false, 700)] }),
       show("2026-08-05", { products: [line("Dropped", false, 900)] }),
-    ]);
+    ], { unmappedNames: ["Dropped", "Kept"], unmappedCount: 2 });
     const n = narrowReportToRange(r, july);
     expect(n.totals.revenueCents).toBe(700);
     expect(n.unmappedNames).toEqual(["Kept"]);
     expect(n.unmappedCount).toBe(1);
+  });
+
+  it("does not resurrect a dismissed name that buildLedgerReport already excluded", () => {
+    const line = (name: string, mapped: boolean, rev: number) =>
+      ({ productName: name, itemId: mapped ? 1 : null, mapped, unitCostCents: null, qty: 1, costCents: 0, revenueCents: rev, profitCents: rev });
+    // "Dismissed Thing" has mapped: false on its product line, exactly like a
+    // real unmapped name -- but buildLedgerReport already decided to exclude
+    // it from unmappedNames (the user dismissed it), so it must not reappear
+    // just because narrowing re-derives the set from product lines.
+    const r = report([
+      show("2026-07-05", { products: [line("Kept", false, 700), line("Dismissed Thing", false, 300)] }),
+    ], { unmappedNames: ["Kept"], unmappedCount: 1 });
+    const n = narrowReportToRange(r, july);
+    expect(n.unmappedNames).toEqual(["Kept"]);
+    expect(n.unmappedNames).not.toContain("Dismissed Thing");
+  });
+
+  it("a range covering the entire timeline produces totals and unmappedNames equal to the unfiltered report", () => {
+    const line = (name: string, mapped: boolean, rev: number) =>
+      ({ productName: name, itemId: mapped ? 1 : null, mapped, unitCostCents: null, qty: 1, costCents: 0, revenueCents: rev, profitCents: rev });
+    const r = report([
+      show("2026-06-10", { products: [line("Kept", false, 700)] }),
+      show("2026-07-10", { products: [line("Dismissed Thing", false, 300)] }),
+    ], { unmappedNames: ["Kept"], unmappedCount: 1 });
+    const wholeRange = { from: "2026-01-01", to: "2026-12-31" };
+    const n = narrowReportToRange(r, wholeRange);
+    expect(n.unmappedNames).toEqual(r.unmappedNames);
+    expect(n.unmappedNames).not.toContain("Dismissed Thing");
+    expect(n.totals.revenueCents).toBe(1000);
   });
 });
