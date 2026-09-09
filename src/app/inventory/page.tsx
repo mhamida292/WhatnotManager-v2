@@ -55,7 +55,8 @@ export default async function InventoryPage() {
         ) : (
           <>
             <Stat label="In stock" value={`${stock.units} units`} />
-            <Stat label="In-stock value" value={<Money cents={stock.valueCents} />} />
+            <Stat label="In-stock value" value={<Money cents={stock.valueCents} />}
+              sub={stock.units > 0 ? <><Money cents={stock.avgUnitCostCents} /> avg / piece</> : undefined} />
             <Stat label="Products in stock" value={`${stock.productsInStock} of ${stock.totalProducts}`} />
           </>
         )}

@@ -5,6 +5,7 @@ export interface InStockSummary {
   valueCents: number;       // Σ max(remaining, 0) × unitCostCents
   productsInStock: number;  // count of items with remaining > 0
   totalProducts: number;    // items.length
+  avgUnitCostCents: number; // valueCents / units, 0 when nothing is on hand
 }
 
 /** On-hand stock derived from per-item remaining + avg unit cost. Negative
@@ -18,5 +19,8 @@ export function inStockSummary(items: InStockItem[]): InStockSummary {
     valueCents += onHand * it.unitCostCents;
     if (it.remaining > 0) productsInStock += 1;
   }
-  return { units, valueCents, productsInStock, totalProducts: items.length };
+  // Derived from the two totals above rather than averaged across items, so the
+  // card can never disagree with the value and unit counts sitting next to it.
+  const avgUnitCostCents = units > 0 ? Math.round(valueCents / units) : 0;
+  return { units, valueCents, productsInStock, totalProducts: items.length, avgUnitCostCents };
 }
