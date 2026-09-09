@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Money } from "@/components/Money";
+import { ItemCombobox } from "@/components/ItemCombobox";
 import { INPUT_CLASS } from "@/lib/ui/inputs";
 import { toCents } from "@/lib/money";
 import type { Invoice, InvoiceLine } from "@/lib/db/invoices";
@@ -23,6 +24,8 @@ export function InvoiceEditor({ invoice, lines: initialLines, items }: {
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", qty: "", cost: "" });
+  // ItemCombobox seeds its text once, so bump this to remount it empty after Add.
+  const [pickerKey, setPickerKey] = useState(0);
 
   const total = lines.reduce(
     (s, l) => s + l.quantity * (isSale ? (l.unitPriceCents ?? 0) : l.unitCostCents),
@@ -70,6 +73,7 @@ export function InvoiceEditor({ invoice, lines: initialLines, items }: {
       const { id } = await res.json();
       setLines([...lines, { id, invoiceId: invoice.id, itemId: Number(form.itemId), productName: name, displayName: name, quantity: qty, unitCostCents: 0, unitPriceCents: cents, kind: "item" }]);
       setForm({ itemId: "", name: "", qty: "", cost: "", packs: "", perPack: "" });
+      setPickerKey((k) => k + 1);
       router.refresh();
     } else {
       const cents = toCents(Number(form.cost));
@@ -84,6 +88,7 @@ export function InvoiceEditor({ invoice, lines: initialLines, items }: {
       const { id } = await res.json();
       setLines([...lines, { id, invoiceId: invoice.id, itemId: form.itemId ? Number(form.itemId) : null, productName: name, displayName: name, quantity: qty, unitCostCents: cents, unitPriceCents: null, kind: "item" }]);
       setForm({ itemId: "", name: "", qty: "", cost: "", packs: "", perPack: "" });
+      setPickerKey((k) => k + 1);
       router.refresh();
     }
   }
@@ -240,10 +245,9 @@ export function InvoiceEditor({ invoice, lines: initialLines, items }: {
         {isSale ? (
           <div className="space-y-2">
             <div className="flex flex-wrap items-end gap-2">
-              <select className={INPUT_CLASS} value={form.itemId} onChange={(e) => pickItem(e.target.value)}>
-                <option value="">Select item…</option>
-                {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-              </select>
+              <ItemCombobox key={pickerKey} items={items} value={form.itemId ? Number(form.itemId) : null}
+                onChange={(id) => pickItem(id ? String(id) : "")}
+                listId="invoice-sale-items" placeholder="Search item…" className={INPUT_CLASS} />
               <input type="number" min="0" placeholder="Qty (pcs)" className={`w-24 ${INPUT_CLASS}`} value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} />
               <input type="number" step="0.01" min="0" placeholder="Unit price $" className={`w-28 ${INPUT_CLASS}`} value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} />
               <Button onClick={addLine}>Add</Button>
@@ -258,11 +262,11 @@ export function InvoiceEditor({ invoice, lines: initialLines, items }: {
           </div>
         ) : (
           <div className="flex flex-wrap items-end gap-2">
-            <select className={INPUT_CLASS} value={form.itemId} onChange={(e) => pickItem(e.target.value)}>
-              <option value="">New product…</option>
-              {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
-            {!form.itemId && <input className={INPUT_CLASS} placeholder="New product name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />}
+            <ItemCombobox key={pickerKey} items={items} value={form.itemId ? Number(form.itemId) : null}
+              onChange={(id) => setForm((f) => ({ ...f, itemId: id ? String(id) : "" }))}
+              onTextChange={(text) => setForm((f) => ({ ...f, name: text }))}
+              listId="invoice-purchase-items" placeholder="Search item, or type a new product…"
+              className={INPUT_CLASS} />
             <input type="number" min="0" placeholder="Qty" className={`w-20 ${INPUT_CLASS}`} value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} />
             <input type="number" step="0.01" min="0" placeholder="Unit cost $" className={`w-28 ${INPUT_CLASS}`} value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} />
             <Button onClick={addLine}>Add</Button>
