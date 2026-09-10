@@ -95,4 +95,12 @@ describe("parsePayrollInput — shared rules", () => {
     expect(ok(byPiece({ amountCents: 999999 })).amountCents).toBe(4500);
     expect(ok(hourly({ amountCents: 999999, qty: 99 })).amountCents).toBe(7500);
   });
+
+  it("rejects an hourly shift whose pay rounds down to nothing", () => {
+    expect(parsePayrollInput(hourly({ startTime: "12:00", endTime: "12:01", rateCents: 1 })).ok).toBe(false);
+  });
+
+  it("still accepts a legitimately tiny but non-zero amount", () => {
+    expect(ok(byPiece({ qty: 1, rateCents: 1 })).amountCents).toBe(1);
+  });
 });

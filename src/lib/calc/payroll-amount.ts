@@ -77,9 +77,11 @@ export function parsePayrollInput(b: Record<string, unknown>): PayrollParse {
     qty = count;
   }
 
+  const amountCents = payrollAmountCents(qty, rateCents);
+  if (amountCents <= 0) return { ok: false, error: "Pay works out to $0 — check the rate and the amount of work" };
+
   return {
     ok: true,
-    value: { person, workDate, basis, qty, startTime, endTime, rateCents,
-             amountCents: payrollAmountCents(qty, rateCents), note },
+    value: { person, workDate, basis, qty, startTime, endTime, rateCents, amountCents, note },
   };
 }
