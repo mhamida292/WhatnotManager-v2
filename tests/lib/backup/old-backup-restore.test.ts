@@ -9,8 +9,10 @@ import { listPayroll } from "@/lib/db/payroll";
  *  currently-deployed app actually contains. */
 const OLD_TABLES = TABLES.filter((t) => t !== "dismissed_product_names");
 const OLD_PAYROLL_COLS = ["id", "person", "period_start", "period_end", "hours", "rate_cents", "amount_cents", "note"];
+/** payroll_entries as it was AFTER the shift reshape but BEFORE pay bases. */
+const HOURLY_PAYROLL_COLS = ["id", "person", "work_date", "start_time", "end_time", "hours", "rate_cents", "amount_cents", "note"];
 
-async function oldBackup(payrollRows: (string | number | null)[][]): Promise<Buffer> {
+async function oldBackup(payrollRows: (string | number | null)[][], payrollCols = OLD_PAYROLL_COLS): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const meta = wb.addWorksheet("_meta");
   meta.addRow(["key", "value"]);
@@ -21,7 +23,7 @@ async function oldBackup(payrollRows: (string | number | null)[][]): Promise<Buf
   for (const t of OLD_TABLES) {
     const ws = wb.addWorksheet(t);
     if (t === "payroll_entries") {
-      ws.addRow(OLD_PAYROLL_COLS);
+      ws.addRow(payrollCols);
       for (const r of payrollRows) ws.addRow(r);
     } else if (t === "inventory_items") {
       // One ordinary row, so the import has something real to restore.
@@ -64,5 +66,21 @@ describe("restoring a backup taken by the OLD app", () => {
     const db = createDb(":memory:");
     const res = await importWorkbook(db, await oldBackup([]));
     expect(res.counts["inventory_items"]).toBe(1);
+  });
+
+  it("carries an hourly backup's hours across as qty", async () => {
+    const buf = await oldBackup(
+      [[1, "Maria", "2026-07-18", "18:00", "23:00", 5, 1500, 7500, "evening"]],
+      HOURLY_PAYROLL_COLS,
+    );
+    const db = createDb(":memory:");
+    await importWorkbook(db, buf);
+
+    const [row] = listPayroll(db);
+    expect(row).toMatchObject({
+      person: "Maria", workDate: "2026-07-18", basis: "hour", qty: 5,
+      startTime: "18:00", endTime: "23:00", rateCents: 1500,
+      amountCents: 7500, paidOn: null,
+    });
   });
 });

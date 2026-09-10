@@ -65,7 +65,11 @@ const RENAMED_COLUMNS: Record<string, Record<string, string>> = {
   // A pay period became a worked shift. period_start is the day the work happened,
   // which is what labor allocation keys on; period_end carried no extra information
   // for a single-day entry and start/end clock times simply did not exist.
-  payroll_entries: { period_start: "work_date" },
+  //
+  // A shift then became one basis among three: hours is just the quantity of an
+  // 'hour' entry, and basis takes its schema default of 'hour' on import, which
+  // is exactly right for a workbook written before piece rates existed.
+  payroll_entries: { period_start: "work_date", hours: "qty" },
 };
 
 /** A stand-in for a NOT NULL column the file cannot supply. Empty rather than
