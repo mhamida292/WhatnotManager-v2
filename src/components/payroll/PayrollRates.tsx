@@ -57,9 +57,11 @@ export function PayrollRates({ rates, people }: { rates: PayrollRate[]; people: 
                       aria-label={`${person} ${basisLabel(b)} rate`}
                       defaultValue={rateFor(person, b) ? (rateFor(person, b)!.rateCents / 100).toFixed(2) : ""}
                       onBlur={(e) => {
-                        const current = rateFor(person, b);
-                        const was = current ? (current.rateCents / 100).toFixed(2) : "";
-                        if (e.target.value.trim() !== was) save(person, b, e.target.value);
+                        const trimmed = e.target.value.trim();
+                        const nextCents = trimmed === "" ? null : Math.round(Number(trimmed) * 100);
+                        if (nextCents != null && !Number.isFinite(nextCents)) return;
+                        const storedCents = rateFor(person, b)?.rateCents ?? null;
+                        if (nextCents !== storedCents) save(person, b, e.target.value);
                       }} />
                   </td>
                 ))}
