@@ -54,8 +54,9 @@ function seed(db: DB) {
   // Payroll and dismissals too, or the round-trip below compares two empty
   // tables and proves nothing about the newest columns.
   insertPayroll(db, {
-    person: "Sam", workDate: "2026-06-14", startTime: "20:00", endTime: "01:00",
-    hours: 5, rateCents: 1500, amountCents: 7500, note: null,
+    person: "Sam", workDate: "2026-06-14", basis: "hour", qty: 5,
+    startTime: "20:00", endTime: "01:00",
+    rateCents: 1500, amountCents: 7500, note: null,
   });
   dismissProductName(db, "BUNDLE ON SCREEN");
 }

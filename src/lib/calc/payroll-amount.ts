@@ -55,8 +55,9 @@ export function parseShiftInput(b: Record<string, unknown>): ShiftParse {
   if (!Number.isFinite(rateCents) || rateCents <= 0) return { ok: false, error: "Rate must be greater than zero" };
 
   const note = typeof b.note === "string" && b.note.trim() ? b.note.trim() : null;
+  // TEMP: Task 4 replaces parseShiftInput with a basis-aware parsePayrollInput.
   return {
     ok: true,
-    value: { person, workDate, startTime, endTime, hours, rateCents, amountCents: payrollAmountCents(hours, rateCents), note },
+    value: { person, workDate, basis: "hour", qty: hours, startTime, endTime, rateCents, amountCents: payrollAmountCents(hours, rateCents), note },
   };
 }

@@ -33,16 +33,16 @@ describe("POST /api/payroll", () => {
     expect(res.status).toBe(200);
 
     const [row] = listPayroll(db);
-    expect(row.hours).toBe(5);            // 20:00 -> 01:00 crosses midnight
+    expect(row.qty).toBe(5);            // 20:00 -> 01:00 crosses midnight
     expect(row.amountCents).toBe(7500);   // 5h * $15
     expect(row.workDate).toBe("2026-07-08");
   });
 
   it("ignores a client-supplied amount and recomputes it", async () => {
-    await post(body({ amountCents: 999999, hours: 99 }));
+    await post(body({ amountCents: 999999, qty: 99 }));
     const [row] = listPayroll(db);
     expect(row.amountCents).toBe(7500);
-    expect(row.hours).toBe(5);
+    expect(row.qty).toBe(5);
   });
 
   it("rejects equal start and end rather than reading it as 24 hours", async () => {
@@ -69,7 +69,7 @@ describe("PATCH /api/payroll/[id]", () => {
     expect(res.status).toBe(200);
 
     const [row] = listPayroll(db);
-    expect(row.hours).toBe(5);
+    expect(row.qty).toBe(5);
     expect(row.amountCents).toBe(10000);
   });
 
