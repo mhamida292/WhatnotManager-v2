@@ -20,12 +20,12 @@ function rangeClause(range?: PayrollDateRange): { sql: string; args: string[] } 
 }
 
 const COLS = `id, person, work_date AS workDate, start_time AS startTime,
-  end_time AS endTime, hours, rate_cents AS rateCents,
+  end_time AS endTime, qty AS hours, rate_cents AS rateCents,
   amount_cents AS amountCents, note`;
 
 export function insertPayroll(db: DB, e: PayrollInput): number {
   const info = db.prepare(`INSERT INTO payroll_entries
-    (person, work_date, start_time, end_time, hours, rate_cents, amount_cents, note)
+    (person, work_date, start_time, end_time, qty, rate_cents, amount_cents, note)
     VALUES (?,?,?,?,?,?,?,?)`).run(
       e.person.trim(), e.workDate, e.startTime, e.endTime,
       e.hours, e.rateCents, e.amountCents, e.note?.trim() || null);
@@ -45,7 +45,7 @@ export function getPayroll(db: DB, id: number): PayrollRow | null {
 
 export function updatePayroll(db: DB, id: number, e: PayrollInput): void {
   db.prepare(`UPDATE payroll_entries SET person=?, work_date=?, start_time=?, end_time=?,
-    hours=?, rate_cents=?, amount_cents=?, note=? WHERE id=?`).run(
+    qty=?, rate_cents=?, amount_cents=?, note=? WHERE id=?`).run(
       e.person.trim(), e.workDate, e.startTime, e.endTime,
       e.hours, e.rateCents, e.amountCents, e.note?.trim() || null, id);
 }

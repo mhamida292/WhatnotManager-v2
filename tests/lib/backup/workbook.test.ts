@@ -75,7 +75,7 @@ describe("importWorkbook", () => {
     // money/integer fields must survive as numbers, not stringified
     const settings = fresh.prepare("SELECT giveaway_unit_cents as g, default_shipping_supplies_cents as s FROM app_settings WHERE id=1").get() as { g: number; s: number };
     expect(settings).toEqual({ g: 400, s: 0 });
-    const wage = fresh.prepare("SELECT amount_cents AS a, hours AS h FROM payroll_entries LIMIT 1").get() as { a: number; h: number };
+    const wage = fresh.prepare("SELECT amount_cents AS a, qty AS h FROM payroll_entries LIMIT 1").get() as { a: number; h: number };
     expect(wage).toEqual({ a: 7500, h: 5 });
   });
 

@@ -15,7 +15,7 @@ export const TABLES = [
   // giveaway_items before show_giveaway_allocations (FK); bundle_components
   // after shows/ledger_transactions/inventory_items (all FK parents above).
   "giveaway_items", "show_giveaway_allocations", "bundle_components",
-  "payroll_entries",
+  "payroll_entries", "payroll_rates",
   // No FKs, so order is free; restoring these keeps "not a product" decisions.
   "dismissed_product_names",
 ] as const;
