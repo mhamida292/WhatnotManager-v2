@@ -16,8 +16,8 @@ beforeEach(() => {
 });
 
 const body = (over: Record<string, unknown> = {}) => ({
-  person: "Sam", workDate: "2026-07-08", startTime: "20:00", endTime: "01:00",
-  rateCents: 1500, note: null, ...over,
+  person: "Sam", workDate: "2026-07-08", basis: "hour",
+  startTime: "20:00", endTime: "01:00", rateCents: 1500, note: null, ...over,
 });
 
 const post = (b: Record<string, unknown>) =>
@@ -78,5 +78,29 @@ describe("PATCH /api/payroll/[id]", () => {
     await post(body());
     const id = listPayroll(db)[0].id;
     expect((await patch(id, body({ rateCents: -5 }))).status).toBe(400);
+  });
+});
+
+describe("POST /api/payroll — piece and package", () => {
+  it("saves a piece entry with no clock times", async () => {
+    const res = await post({ person: "Ahmed", workDate: "2026-09-09", basis: "piece", qty: 300, rateCents: 15 });
+    expect(res.status).toBe(200);
+    const [row] = listPayroll(db);
+    expect(row).toMatchObject({
+      basis: "piece", qty: 300, startTime: null, endTime: null,
+      amountCents: 4500, paidOn: null,
+    });
+  });
+
+  it("saves a package entry", async () => {
+    await post({ person: "Ahmed", workDate: "2026-09-08", basis: "package", qty: 120, rateCents: 50 });
+    expect(listPayroll(db)[0]).toMatchObject({ basis: "package", qty: 120, amountCents: 6000 });
+  });
+
+  it("rejects a fractional count and an unknown basis", async () => {
+    const base = { person: "Ahmed", workDate: "2026-09-09", rateCents: 15 };
+    expect((await post({ ...base, basis: "piece", qty: 2.5 })).status).toBe(400);
+    expect((await post({ ...base, basis: "widget", qty: 5 })).status).toBe(400);
+    expect(listPayroll(db)).toHaveLength(0);
   });
 });
