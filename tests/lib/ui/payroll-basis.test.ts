@@ -26,4 +26,11 @@ describe("payroll basis labels", () => {
   it("groups a large count for readability", () => {
     expect(workLabel("piece", 2000)).toBe("2,000 pieces");
   });
+
+  it("declares a singular for every basis, so the noun never falls back to the identifier", () => {
+    expect(workLabel("piece", 1)).toBe("1 piece");
+    expect(workLabel("package", 1)).toBe("1 package");
+    expect(workLabel("piece", 2)).toBe("2 pieces");
+    expect(workLabel("package", 2)).toBe("2 packages");
+  });
 });

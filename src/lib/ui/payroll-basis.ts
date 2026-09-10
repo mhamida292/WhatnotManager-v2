@@ -6,6 +6,7 @@ export const PAYROLL_BASES: readonly PayrollBasis[] = ["hour", "piece", "package
 const LABELS: Record<PayrollBasis, string> = { hour: "Hour", piece: "Piece", package: "Package" };
 const PLURALS: Record<PayrollBasis, string> = { hour: "Hours", piece: "Pieces", package: "Packages" };
 const RATES: Record<PayrollBasis, string> = { hour: "$/hr", piece: "$/piece", package: "$/package" };
+const SINGULARS: Record<PayrollBasis, string> = { hour: "hr", piece: "piece", package: "package" };
 
 export function basisLabel(basis: PayrollBasis): string { return LABELS[basis]; }
 
@@ -18,6 +19,6 @@ export function rateLabel(basis: PayrollBasis): string { return RATES[basis]; }
  *  whole; counts are integers and grouped, since piece jobs run to thousands. */
 export function workLabel(basis: PayrollBasis, qty: number): string {
   if (basis === "hour") return `${qty.toFixed(2)} hrs`;
-  const noun = qty === 1 ? basis : PLURALS[basis].toLowerCase();
+  const noun = qty === 1 ? SINGULARS[basis] : PLURALS[basis].toLowerCase();
   return `${qty.toLocaleString("en-US")} ${noun}`;
 }
