@@ -16,7 +16,7 @@ export function PayrollForm({ rates }: { rates: PayrollRate[] }) {
 
   /** The saved default for a person on a basis, as a form-shaped string. */
   function savedRate(person: string, b: PayrollBasis): string {
-    const hit = rates.find((r) => r.person.toLowerCase() === person.trim().toLowerCase() && r.basis === b);
+    const hit = rates.find((r) => r.person === person.trim() && r.basis === b);
     return hit ? (hit.rateCents / 100).toFixed(2) : "";
   }
 

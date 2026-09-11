@@ -62,6 +62,9 @@ export function PayrollRates({ rates, people }: { rates: PayrollRate[]; people: 
                         if (nextCents != null && !Number.isFinite(nextCents)) return;
                         const storedCents = rateFor(person, b)?.rateCents ?? null;
                         if (nextCents !== storedCents) save(person, b, e.target.value);
+                        // Show the cents that will actually be stored, so a typed
+                        // value like 18.005 doesn't silently read back as 18.01.
+                        if (nextCents != null) e.target.value = (nextCents / 100).toFixed(2);
                       }} />
                   </td>
                 ))}

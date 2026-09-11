@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbForRequest } from "@/lib/auth/request";
 import { listPayrollRates, setPayrollRate, deletePayrollRate } from "@/lib/db/payroll-rates";
+import { PAYROLL_BASES } from "@/lib/db/payroll";
 import type { PayrollBasis } from "@/lib/db/payroll";
-
-const BASES: PayrollBasis[] = ["hour", "piece", "package"];
 
 export async function GET() {
   return NextResponse.json(listPayrollRates(await dbForRequest()));
@@ -14,7 +13,7 @@ export async function PUT(req: NextRequest) {
   const person = typeof b.person === "string" ? b.person.trim() : "";
   if (!person) return NextResponse.json({ error: "Person is required" }, { status: 400 });
   const basis = b.basis as PayrollBasis;
-  if (!BASES.includes(basis)) return NextResponse.json({ error: "Basis must be hour, piece or package" }, { status: 400 });
+  if (!PAYROLL_BASES.includes(basis)) return NextResponse.json({ error: "Basis must be hour, piece or package" }, { status: 400 });
 
   const db = await dbForRequest();
   const rateCents = b.rateCents == null ? 0 : Math.trunc(Number(b.rateCents));

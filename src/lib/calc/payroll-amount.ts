@@ -1,3 +1,4 @@
+import { PAYROLL_BASES } from "@/lib/db/payroll";
 import type { PayrollBasis, PayrollInput } from "@/lib/db/payroll";
 
 /** Auto-calculated gross pay in cents: quantity * rate, rounded. Returns 0 if either
@@ -31,8 +32,6 @@ export function shiftHours(start: string, end: string): number | null {
   return span / 60;
 }
 
-const BASES: PayrollBasis[] = ["hour", "piece", "package"];
-
 export type PayrollParse =
   | { ok: true; value: PayrollInput }
   | { ok: false; error: string };
@@ -50,7 +49,7 @@ export function parsePayrollInput(b: Record<string, unknown>): PayrollParse {
 
   // An absent basis means an older client that only ever sent shifts.
   const basis = (b.basis ?? "hour") as PayrollBasis;
-  if (!BASES.includes(basis)) return { ok: false, error: "Basis must be hour, piece or package" };
+  if (!PAYROLL_BASES.includes(basis)) return { ok: false, error: "Basis must be hour, piece or package" };
 
   const rateCents = Math.trunc(Number(b.rateCents));
   if (!Number.isFinite(rateCents) || rateCents <= 0) return { ok: false, error: "Rate must be greater than zero" };
@@ -71,8 +70,13 @@ export function parsePayrollInput(b: Record<string, unknown>): PayrollParse {
   } else {
     const count = Number(b.qty);
     // A fractional count is a typo, not half a piece -- rejected, never rounded.
-    if (!Number.isInteger(count) || count <= 0) {
+    // isSafeInteger (not isInteger) also catches a count like 1e21, which would
+    // otherwise derive an amount past MAX_SAFE_INTEGER for SQLite to mangle.
+    if (!Number.isSafeInteger(count) || count <= 0) {
       return { ok: false, error: `${basis === "piece" ? "Pieces" : "Packages"} must be a whole number greater than zero` };
+    }
+    if (count > 10_000_000) {
+      return { ok: false, error: `That is more ${basis === "piece" ? "pieces" : "packages"} than a person can do in a day — check the number` };
     }
     qty = count;
   }

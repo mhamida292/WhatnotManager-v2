@@ -6,7 +6,8 @@ import { insertExpense } from "@/lib/db/expenses";
 import { parseLedger } from "@/lib/csv/ledger";
 import { saveLedger } from "@/lib/db/ledger";
 import { getSettings, updateSettings } from "@/lib/db/settings";
-import { insertPayroll } from "@/lib/db/payroll";
+import { insertPayroll, setPayrollPaid } from "@/lib/db/payroll";
+import { setPayrollRate } from "@/lib/db/payroll-rates";
 import { dismissProductName } from "@/lib/db/dismissed-names";
 import { TABLES, exportWorkbook, importWorkbook, BackupError } from "@/lib/backup/workbook";
 
@@ -53,11 +54,13 @@ function seed(db: DB) {
   updateSettings(db, { ...getSettings(db), giveawayUnitCents: 400, defaultShippingSuppliesCents: 0, businessName: "DirectDealzz" });
   // Payroll and dismissals too, or the round-trip below compares two empty
   // tables and proves nothing about the newest columns.
-  insertPayroll(db, {
+  const payrollId = insertPayroll(db, {
     person: "Sam", workDate: "2026-06-14", basis: "hour", qty: 5,
     startTime: "20:00", endTime: "01:00",
     rateCents: 1500, amountCents: 7500, note: null,
   });
+  setPayrollPaid(db, payrollId, "2026-06-20");
+  setPayrollRate(db, "Sam", "hour", 1500);
   dismissProductName(db, "BUNDLE ON SCREEN");
 }
 
@@ -76,8 +79,10 @@ describe("importWorkbook", () => {
     // money/integer fields must survive as numbers, not stringified
     const settings = fresh.prepare("SELECT giveaway_unit_cents as g, default_shipping_supplies_cents as s FROM app_settings WHERE id=1").get() as { g: number; s: number };
     expect(settings).toEqual({ g: 400, s: 0 });
-    const wage = fresh.prepare("SELECT amount_cents AS a, qty AS h FROM payroll_entries LIMIT 1").get() as { a: number; h: number };
-    expect(wage).toEqual({ a: 7500, h: 5 });
+    const wage = fresh.prepare("SELECT amount_cents AS a, qty AS h, paid_on AS p FROM payroll_entries LIMIT 1").get() as { a: number; h: number; p: string };
+    expect(wage).toEqual({ a: 7500, h: 5, p: "2026-06-20" });
+    const rate = fresh.prepare("SELECT rate_cents AS r FROM payroll_rates WHERE person='Sam' AND basis='hour'").get() as { r: number };
+    expect(rate).toEqual({ r: 1500 });
   });
 
   it("rejects a workbook missing a required sheet and leaves the db unchanged", async () => {

@@ -1,7 +1,9 @@
+import { PAYROLL_BASES } from "@/lib/db/payroll";
 import type { PayrollBasis } from "@/lib/db/payroll";
 
-/** In the order the form offers them. */
-export const PAYROLL_BASES: readonly PayrollBasis[] = ["hour", "piece", "package"] as const;
+/** Re-exported from the type's home so existing consumers (and this module's
+ *  own test) keep working unchanged. In the order the form offers them. */
+export { PAYROLL_BASES };
 
 const LABELS: Record<PayrollBasis, string> = { hour: "Hour", piece: "Piece", package: "Package" };
 const PLURALS: Record<PayrollBasis, string> = { hour: "Hours", piece: "Pieces", package: "Packages" };

@@ -75,6 +75,18 @@ describe("parsePayrollInput — piece and package", () => {
     expect(parsePayrollInput(byPiece({ qty: 2.5 })).ok).toBe(false);
     expect(parsePayrollInput(byPiece({ qty: "many" })).ok).toBe(false);
   });
+
+  it("rejects a count past MAX_SAFE_INTEGER even though it passes isInteger", () => {
+    expect(parsePayrollInput(byPiece({ qty: 1e21 })).ok).toBe(false);
+  });
+
+  it("rejects a count over the daily ceiling", () => {
+    expect(parsePayrollInput(byPiece({ qty: 10_000_001 })).ok).toBe(false);
+  });
+
+  it("accepts a count right at the daily ceiling", () => {
+    expect(parsePayrollInput(byPiece({ qty: 10_000_000 })).ok).toBe(true);
+  });
 });
 
 describe("parsePayrollInput — shared rules", () => {

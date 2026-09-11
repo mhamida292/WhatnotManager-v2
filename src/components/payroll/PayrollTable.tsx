@@ -4,9 +4,9 @@ import { Money } from "@/components/Money";
 import { INPUT_CLASS } from "@/lib/ui/inputs";
 import { shiftHours, payrollAmountCents } from "@/lib/calc/payroll-amount";
 import { basisLabel, qtyLabel, workLabel } from "@/lib/ui/payroll-basis";
-import type { PayrollRow } from "@/lib/db/payroll";
+import type { PayrollBasis, PayrollRow } from "@/lib/db/payroll";
 
-const BASIS_CLASS: Record<string, string> = {
+const BASIS_CLASS: Record<PayrollBasis, string> = {
   hour: "border-sky-200 bg-sky-50 text-sky-700",
   piece: "border-emerald-200 bg-emerald-50 text-emerald-700",
   package: "border-violet-200 bg-violet-50 text-violet-700",

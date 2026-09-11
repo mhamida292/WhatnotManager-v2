@@ -2,6 +2,11 @@ import type { DB } from "./connection";
 
 export type PayrollBasis = "hour" | "piece" | "package";
 
+/** The complete, exhaustive set of bases. Import this rather than re-listing
+ *  the literals -- a fourth basis added here is the only place it needs adding
+ *  for every validator and UI consumer to pick it up. */
+export const PAYROLL_BASES: readonly PayrollBasis[] = ["hour", "piece", "package"] as const;
+
 export interface PayrollRow {
   id: number; person: string; workDate: string;
   basis: PayrollBasis; qty: number;

@@ -139,8 +139,11 @@ did not disturb net profit.
 ### API
 
 `POST /api/payroll` and `PATCH /api/payroll/:id` accept the new fields through
-`parsePayrollInput`. Marking paid rides on the existing `PATCH` rather than a
-new endpoint.
+`parsePayrollInput`. Marking paid has its OWN endpoint, `PATCH /api/payroll/:id/paid`,
+rather than riding the existing `PATCH` -- a shared endpoint is exactly what
+would let an ordinary edit clear the date an entry was settled on, since
+`PayrollInput` deliberately excludes `paidOn` and only `setPayrollPaid` may
+touch it.
 
 ## UI
 
