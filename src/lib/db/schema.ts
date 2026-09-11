@@ -1,21 +1,28 @@
-/** Split out of SCHEMA so migratePayrollShifts recreates the table from the very
+/** Split out of SCHEMA so the payroll migrations recreate the table from the very
  *  same DDL a fresh database gets, instead of a copy that could drift from it.
  *
  *  Table only, no index: SCHEMA runs BEFORE migrate() on an existing file, where
  *  CREATE TABLE IF NOT EXISTS is a no-op against the old pay-period table. An
  *  index over work_date here would then be built against a table that does not
  *  have that column yet and abort the open. migrate() creates it after the
- *  reshape instead. */
+ *  reshape instead.
+ *
+ *  qty carries hours for an 'hour' entry and a piece/package count otherwise;
+ *  start_time/end_time are null for anything but 'hour'. paid_on is bookkeeping
+ *  only -- an entry costs the business the day it is worked, never the day the
+ *  cash moves, so nothing in allocation or the dashboard reads it. */
 export const PAYROLL_SCHEMA = `
 CREATE TABLE IF NOT EXISTS payroll_entries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   person TEXT NOT NULL,
   work_date TEXT NOT NULL,
-  start_time TEXT NOT NULL,
-  end_time TEXT NOT NULL,
-  hours REAL NOT NULL,
+  basis TEXT NOT NULL DEFAULT 'hour' CHECK (basis IN ('hour','piece','package')),
+  qty REAL NOT NULL,
+  start_time TEXT,
+  end_time TEXT,
   rate_cents INTEGER NOT NULL,
   amount_cents INTEGER NOT NULL,
+  paid_on TEXT,
   note TEXT
 );
 `;
@@ -214,5 +221,12 @@ ${PAYROLL_SCHEMA}
 CREATE TABLE IF NOT EXISTS dismissed_product_names (
   code TEXT PRIMARY KEY,
   dismissed_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS payroll_rates (
+  person TEXT NOT NULL,
+  basis TEXT NOT NULL CHECK (basis IN ('hour','piece','package')),
+  rate_cents INTEGER NOT NULL,
+  PRIMARY KEY (person, basis)
 );
 `;

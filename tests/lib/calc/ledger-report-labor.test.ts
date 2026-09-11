@@ -24,8 +24,9 @@ function showOn(date: string, payoutCents: number, sessionSeq = 0): number {
 }
 
 const shift = (workDate: string, amountCents: number) => ({
-  person: "Sam", workDate, startTime: "18:00", endTime: "23:00",
-  hours: 5, rateCents: amountCents / 5, amountCents, note: null,
+  person: "Sam", workDate, basis: "hour" as const, qty: 5,
+  startTime: "18:00", endTime: "23:00",
+  rateCents: Math.round(amountCents / 5), amountCents, note: null,
 });
 
 describe("buildLedgerReport — labor", () => {

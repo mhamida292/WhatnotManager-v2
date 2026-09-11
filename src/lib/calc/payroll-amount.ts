@@ -1,12 +1,13 @@
-import type { PayrollInput } from "@/lib/db/payroll";
+import { PAYROLL_BASES } from "@/lib/db/payroll";
+import type { PayrollBasis, PayrollInput } from "@/lib/db/payroll";
 
-/** Auto-calculated gross pay in cents: hours * rate, rounded. Returns 0 if either
- *  input is null/NaN (e.g. a flat entry with no hours — caller sets amount directly). */
-export function payrollAmountCents(hours: number | null, rateCents: number | null): number {
-  if (hours == null || rateCents == null) return 0;
-  const h = Number(hours), r = Number(rateCents);
-  if (!Number.isFinite(h) || !Number.isFinite(r)) return 0;
-  return Math.round(h * r);
+/** Auto-calculated gross pay in cents: quantity * rate, rounded. Returns 0 if either
+ *  input is null/NaN (e.g. a flat entry with no quantity — caller sets amount directly). */
+export function payrollAmountCents(qty: number | null, rateCents: number | null): number {
+  if (qty == null || rateCents == null) return 0;
+  const q = Number(qty), r = Number(rateCents);
+  if (!Number.isFinite(q) || !Number.isFinite(r)) return 0;
+  return Math.round(q * r);
 }
 
 /** Minutes since midnight for an 'HH:MM' clock string; null if malformed. */
@@ -31,32 +32,60 @@ export function shiftHours(start: string, end: string): number | null {
   return span / 60;
 }
 
-export type ShiftParse =
+export type PayrollParse =
   | { ok: true; value: PayrollInput }
   | { ok: false; error: string };
 
-/** Validate a shift payload and DERIVE hours and amount from it. The client
- *  never gets to assert the amount — that's what let the old form silently
- *  save $0 entries. */
-export function parseShiftInput(b: Record<string, unknown>): ShiftParse {
+/** Validate a payroll payload and DERIVE qty and amount from it. The client
+ *  never gets to assert the amount -- that's what let the old form silently
+ *  save $0 entries. An hour entry derives qty from its clock times; a piece or
+ *  package entry takes a whole count and stores no times at all. */
+export function parsePayrollInput(b: Record<string, unknown>): PayrollParse {
   const person = typeof b.person === "string" ? b.person.trim() : "";
   if (!person) return { ok: false, error: "Person is required" };
 
   const workDate = typeof b.workDate === "string" ? b.workDate.trim() : "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(workDate)) return { ok: false, error: "Work date must be YYYY-MM-DD" };
 
-  const startTime = typeof b.startTime === "string" ? b.startTime.trim() : "";
-  const endTime = typeof b.endTime === "string" ? b.endTime.trim() : "";
-  const hours = shiftHours(startTime, endTime);
-  if (hours == null) return { ok: false, error: "Start and end must be times like 20:00" };
-  if (hours <= 0) return { ok: false, error: "Start and end time cannot be the same" };
+  // An absent basis means an older client that only ever sent shifts.
+  const basis = (b.basis ?? "hour") as PayrollBasis;
+  if (!PAYROLL_BASES.includes(basis)) return { ok: false, error: "Basis must be hour, piece or package" };
 
   const rateCents = Math.trunc(Number(b.rateCents));
   if (!Number.isFinite(rateCents) || rateCents <= 0) return { ok: false, error: "Rate must be greater than zero" };
 
   const note = typeof b.note === "string" && b.note.trim() ? b.note.trim() : null;
+
+  let qty: number;
+  let startTime: string | null = null;
+  let endTime: string | null = null;
+
+  if (basis === "hour") {
+    startTime = typeof b.startTime === "string" ? b.startTime.trim() : "";
+    endTime = typeof b.endTime === "string" ? b.endTime.trim() : "";
+    const hours = shiftHours(startTime, endTime);
+    if (hours == null) return { ok: false, error: "Start and end must be times like 20:00" };
+    if (hours <= 0) return { ok: false, error: "Start and end time cannot be the same" };
+    qty = hours;
+  } else {
+    const count = Number(b.qty);
+    // A fractional count is a typo, not half a piece -- rejected, never rounded.
+    // isSafeInteger (not isInteger) also catches a count like 1e21, which would
+    // otherwise derive an amount past MAX_SAFE_INTEGER for SQLite to mangle.
+    if (!Number.isSafeInteger(count) || count <= 0) {
+      return { ok: false, error: `${basis === "piece" ? "Pieces" : "Packages"} must be a whole number greater than zero` };
+    }
+    if (count > 10_000_000) {
+      return { ok: false, error: `That is more ${basis === "piece" ? "pieces" : "packages"} than a person can do in a day — check the number` };
+    }
+    qty = count;
+  }
+
+  const amountCents = payrollAmountCents(qty, rateCents);
+  if (amountCents <= 0) return { ok: false, error: "Pay works out to $0 — check the rate and the amount of work" };
+
   return {
     ok: true,
-    value: { person, workDate, startTime, endTime, hours, rateCents, amountCents: payrollAmountCents(hours, rateCents), note },
+    value: { person, workDate, basis, qty, startTime, endTime, rateCents, amountCents, note },
   };
 }

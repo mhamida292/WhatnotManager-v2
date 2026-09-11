@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbForRequest } from "@/lib/auth/request";
 import { deletePayroll, getPayroll, updatePayroll } from "@/lib/db/payroll";
-import { parseShiftInput } from "@/lib/calc/payroll-amount";
+import { parsePayrollInput } from "@/lib/calc/payroll-amount";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
-  const parsed = parseShiftInput(await req.json());
+  const parsed = parsePayrollInput(await req.json());
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
   const db = await dbForRequest();
   if (!getPayroll(db, id)) return NextResponse.json({ error: "Not found" }, { status: 404 });

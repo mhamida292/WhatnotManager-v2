@@ -100,7 +100,11 @@ export function migrate(db: DB): void {
   // Covering (product_name, kind) so the count never touches the table.
   db.exec("CREATE INDEX IF NOT EXISTS idx_lt_product_kind ON ledger_transactions(product_name, kind)");
   migratePayrollShifts(db);
-  // After the reshape, never before: on an existing file SCHEMA has already run
+  // After the pay-period reshape: on a very old file that migration recreates
+  // the table straight from the current PAYROLL_SCHEMA, so there is no `hours`
+  // column left and this one correctly no-ops.
+  migratePayrollBasis(db);
+  // After both reshapes, never before: on an existing file SCHEMA has already run
   // against the old table, so this is the first point work_date is guaranteed
   // to exist.
   db.exec("CREATE INDEX IF NOT EXISTS idx_payroll_work_date ON payroll_entries(work_date)");
@@ -281,6 +285,29 @@ export function migratePayrollShifts(db: DB): void {
     if (n === 0) db.exec("DROP TABLE payroll_entries");
     else db.exec("ALTER TABLE payroll_entries RENAME TO payroll_entries_legacy");
     db.exec(PAYROLL_SCHEMA);
+  })();
+}
+
+/** One-time, idempotent: hourly-only payroll_entries gains a pay basis. hours
+ *  becomes the generic qty, start/end times become nullable (only an 'hour'
+ *  entry has them), and paid_on arrives. SQLite cannot drop a column or relax a
+ *  NOT NULL in place, so the table is rebuilt and copied.
+ *
+ *  Unlike migratePayrollShifts, every old column has a lossless destination
+ *  here, so the copy is complete and the old table is dropped rather than left
+ *  aside. Guarded on the old column, so it runs exactly once. */
+export function migratePayrollBasis(db: DB): void {
+  const cols = (db.prepare("PRAGMA table_info(payroll_entries)").all() as { name: string }[]).map((c) => c.name);
+  if (!cols.includes("hours")) return; // fresh schema, or already migrated
+  db.transaction(() => {
+    db.exec("ALTER TABLE payroll_entries RENAME TO payroll_entries_old");
+    db.exec(PAYROLL_SCHEMA);
+    db.exec(`INSERT INTO payroll_entries
+      (id, person, work_date, basis, qty, start_time, end_time, rate_cents, amount_cents, paid_on, note)
+      SELECT id, person, work_date, 'hour', hours, start_time, end_time,
+             rate_cents, amount_cents, NULL, note
+      FROM payroll_entries_old`);
+    db.exec("DROP TABLE payroll_entries_old");
   })();
 }
 
