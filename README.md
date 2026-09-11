@@ -19,6 +19,7 @@ and expenses (with reimbursement tracking), plus a Whatnot sales aggregator.
 - Add Photo system
 - Add solid renaming system for inventory and items in sales / purchases 
 - Add notes system 
+- Payroll: sub-penny piece rates (rate_cents is whole cents), and auto-counting pieces from show or invoice data
 ## Multi-user / Workspaces
 
 Each account has its own isolated database at `data/ws/<userId>.db`; logins both gate access and select the workspace. The app supports multiple users, with each user logging in with a username + password.
