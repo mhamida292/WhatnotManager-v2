@@ -39,6 +39,31 @@ describe("buildLedgerReport", () => {
     expect(cheese.profitCents).toBe(49 - 250);
   });
 
+  it("measures the selling window from sale rows, not every transaction", () => {
+    // Sales run 10:13:00 -> 10:14:57 (2 min). A LATE refund must not stretch it.
+    const late = `"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 12, 2026, 11:59:00 PM","-$1.00","L9","O9","Refund for order zzz","completed","ADJUSTMENT",""`;
+    saveLedger(db, parseLedger(late));
+    const show = buildLedgerReport(db).shows[0];
+    expect(show.sellingMinutes).toBe(2);
+    expect(show.unitsPerHour).toBe(60); // 2 units over 2 minutes
+  });
+
+  it("has no selling window when a show has a single sale", () => {
+    const solo = createDb(":memory:");
+    saveLedger(solo, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jul 1, 2026, 9:00:00 PM","$5.00","L1","O1","Earnings for selling a Thing #1","processing","SALES",""`));
+    const show = buildLedgerReport(solo).shows[0];
+    expect(show.sellingMinutes).toBeNull();
+    expect(show.unitsPerHour).toBeNull();
+  });
+
+  it("sums show revenue from its product lines", () => {
+    const show = buildLedgerReport(db).shows[0];
+    expect(show.revenueCents).toBe(49 + 200); // both sales, mapped or not
+    expect(show.unitsSold).toBe(2);
+  });
+
   it("treats unmapped products as $0 cost and flags them", () => {
     const rep = buildLedgerReport(db);
     const mystery = rep.shows[0].products.find((p) => p.productName === "Mystery Mini Dumpling")!;
@@ -242,6 +267,7 @@ describe("buildLedgerReport — pooled costing mode", () => {
       { amountCents: 1200, costCents: 200, createdAt: "Jun 12, 2026, 10:14:57 AM" },
       { amountCents: 800, costCents: 200, createdAt: "Jun 12, 2026, 10:15:57 AM" },
     ]);
+    expect(show.revenueCents).toBe(2000);       // pooled shows carry revenue too
     expect(rep.totals.revenueCents).toBe(2000); // from pooledSales, not empty products
     expect(rep.unmappedCount).toBe(0); // no alias resolution attempted at all
     expect(rep.pool).toEqual({

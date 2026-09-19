@@ -6,6 +6,7 @@ import { narrowReportToRange } from "@/lib/calc/report-range";
 import { uncostedSales } from "@/lib/calc/uncosted-sales";
 import { dashboardSummary } from "@/lib/calc/dashboard";
 import { inStockSummary } from "@/lib/calc/in-stock";
+import { avgPerUnitCents } from "@/lib/calc/avg-per-unit";
 import { rangeFromParams, periodLabel } from "@/lib/ui/expense-range";
 import { qtyRemaining, listItems } from "@/lib/db/inventory";
 import { Money } from "@/components/Money";
@@ -51,6 +52,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   // when no params are present, so a fresh dashboard must not say "this week"
   // while showing lifetime figures.
   const label = sp.month || sp.week || sp.all ? periodLabel(sp) : "all time";
+  // Same figure the show card divides: sale lines only, so tips and bonuses
+  // never inflate what a unit appears to fetch.
+  const avgUnitCents = avgPerUnitCents(d.grossSalesCents, rep.totals.unitsSold);
   const margin = (s: { netCents: number; payoutCents: number }) =>
     s.payoutCents <= 0 ? 0 : Math.max(0, Math.min(100, (s.netCents / s.payoutCents) * 100));
 
@@ -82,10 +86,14 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </Link>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Business profit"
           value={<span className="text-3xl font-semibold"><Money cents={d.businessProfitCents} /></span>}
           sub={<>after <Money cents={d.totalExpensesCents} /> expenses</>} />
+        <Stat label="Gross sales" value={<Money cents={d.grossSalesCents} />}
+          sub={avgUnitCents == null
+            ? "sale lines only"
+            : <>{rep.totals.unitsSold} units · <Money cents={avgUnitCents} /> avg</>} />
         <Stat label="Show profit" value={<Money cents={d.totalNetProfitCents} />}
           sub={<>{d.marginPct}% · <Money cents={d.profitPerShowCents} /> per show</>} />
         <Stat label="Cash withdrawn" value={<Money cents={d.paidToBankCents} />} sub="all time" />

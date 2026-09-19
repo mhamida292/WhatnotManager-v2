@@ -3,6 +3,7 @@ import { listShows } from "@/lib/db/shows";
 import { listItems } from "@/lib/db/inventory";
 import { listLedgerTransactions } from "@/lib/db/ledger";
 import { allocateLabor } from "./labor-allocation";
+import { sellingWindow } from "./selling-window";
 import { listPayroll } from "@/lib/db/payroll";
 import { dismissedCodes } from "@/lib/db/dismissed-names";
 import { isPayoutFailure, unrecognizedPayoutMessage } from "@/lib/csv/ledger";
@@ -63,7 +64,10 @@ export interface ReportShow {
   shippingSuppliesCents: number;
   laborCents: number;             // wages for the day this show ran, split across its sessions
   netCents: number;
+  revenueCents: number;         // Σ sale amounts this show (product lines, or pooled sales)
   unitsSold: number;            // Σ product-line qty (each sale + each bundle order = 1)
+  sellingMinutes: number | null;  // first sale -> last sale; null under two sales
+  unitsPerHour: number | null;    // unitsSold over that window
   saleCount: number;            // count of kind==='sale' transactions per show
 }
 
@@ -220,6 +224,9 @@ export function buildLedgerReport(db: DB): LedgerReport {
 
     const products = pool ? [] : [...productMap.values(), ...bundleLines].sort((a, b) => a.productName.localeCompare(b.productName));
     const unitsSold = pool ? saleCount : products.reduce((sum, p) => sum + p.qty, 0);
+    const revenueCents = pool
+      ? pooledSales.reduce((sum, ps) => sum + ps.amountCents, 0)
+      : products.reduce((sum, p) => sum + p.revenueCents, 0);
     const cogsCents = pool ? pooledSales.reduce((sum, ps) => sum + ps.costCents, 0) : products.reduce((sum, p) => sum + p.costCents, 0);
     // Each giveaway costs us a unit of merchandise computed from per-show allocations.
     // This is a real cost NOT present in the ledger (the ledger only has Whatnot's small fee).
@@ -230,6 +237,11 @@ export function buildLedgerReport(db: DB): LedgerReport {
     const giveawayUnallocated = giveawayCount > 0 && allocs.length === 0;
     const laborCents = labor.byShowId.get(s.id) ?? 0;
     const netCents = payout - cogsCents - giveawayCostCents - s.shippingSuppliesCents - laborCents;
+    // Sales only: a refund landing next morning would stretch this to hours.
+    const selling = sellingWindow(
+      rows.filter((t) => t.kind === "sale").map((t) => ledgerTimeOfDaySeconds(t.createdAt)),
+      unitsSold,
+    );
     const times = rows.map((t) => ledgerTimeOfDaySeconds(t.createdAt));
     const timeRange = times.length
       ? `${secondsToClock(Math.min(...times))}–${secondsToClock(Math.max(...times))}`
@@ -243,7 +255,8 @@ export function buildLedgerReport(db: DB): LedgerReport {
       pooledSales: pool ? pooledSales : undefined,
       giveawayTotalCents: giveaway, giveawayCount, giveawayCostCents, giveawayUnallocated,
       tipTotalCents: tip, bonusTotalCents: bonus, otherTotalCents: other,
-      payoutCents: payout, withdrawnToBankCents: withdrawn, payoutFailureCents: payoutFailure, cogsCents, shippingSuppliesCents: s.shippingSuppliesCents, laborCents, netCents, unitsSold, saleCount,
+      payoutCents: payout, withdrawnToBankCents: withdrawn, payoutFailureCents: payoutFailure, cogsCents, shippingSuppliesCents: s.shippingSuppliesCents, laborCents, netCents, revenueCents, unitsSold, saleCount,
+      sellingMinutes: selling.minutes, unitsPerHour: selling.unitsPerHour,
     });
   }
 
@@ -266,9 +279,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
     owedToYouCents: wholesaleInvoices.filter((w) => !w.paid).reduce((s, w) => s + w.revenueCents, 0),
   };
 
-  let revenueCents = shows.reduce((sum, s) => sum + (pool
-    ? (s.pooledSales ?? []).reduce((a, ps) => a + ps.amountCents, 0)
-    : s.products.reduce((a, p) => a + p.revenueCents, 0)), 0);
+  let revenueCents = shows.reduce((sum, s) => sum + s.revenueCents, 0);
   let cogsCents = shows.reduce((sum, s) => sum + s.cogsCents, 0);
   const giveawayCostCents = shows.reduce((sum, s) => sum + s.giveawayCostCents, 0);
   const shippingSuppliesCents = shows.reduce((sum, s) => sum + s.shippingSuppliesCents, 0);

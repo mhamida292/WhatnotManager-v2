@@ -10,6 +10,8 @@ import { DeleteShowButton } from "@/components/DeleteShowButton";
 import GiveawayAllocationEditor from "@/components/GiveawayAllocationEditor";
 import BundleEditor from "@/components/BundleEditor";
 import { showSessionLabel } from "@/lib/ui/show-label";
+import { avgPerUnitCents } from "@/lib/calc/avg-per-unit";
+import { formatMinutes } from "@/lib/calc/selling-window";
 
 export const dynamic = "force-dynamic";
 
@@ -27,15 +29,47 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
     );
   }
   const impact = showDeleteImpact(db, show.showId);
-  const giveawayLabel = `Giveaways (${show.giveawayCount})`;
-  const rows: [string, React.ReactNode][] = [
-    ["Payout", <Money cents={show.payoutCents} />],
-    ["Units sold", show.unitsSold],
-    ["COGS (items sold)", <Money cents={-show.cogsCents} />],
-    [giveawayLabel, <Money cents={-show.giveawayCostCents} />],
-    ["Shipping supplies", <Money cents={-show.shippingSuppliesCents} />],
-    ["Labor (wages this day)", <Money cents={-show.laborCents} />],
-    ["Net profit", <Money cents={show.netCents} />],
+  const avgSaleCents = avgPerUnitCents(show.revenueCents, show.unitsSold);
+  // Whatnot's per-giveaway fee (ledger) and the stock given away (allocations)
+  // are different money, so they sit as separate cost lines -- adjacent, since
+  // they answer the same question together.
+  const giveawayFeeCents = show.giveawayTotalCents;
+  // Whatever payout holds beyond sales and that fee: tips, bonuses, refunds,
+  // adjustments. A residual rather than tip+bonus, so the card reconciles on
+  // every show, including ones carrying a refund.
+  const nonSaleCents = show.payoutCents - show.revenueCents - giveawayFeeCents;
+  // Folding the giveaway fee in with the other costs is what lets the card read
+  // as one subtraction: revenue + tips - total costs = net profit.
+  const totalCostCents = -giveawayFeeCents + show.giveawayCostCents + show.cogsCents
+    + show.shippingSuppliesCents + show.laborCents;
+  type SummaryRow = { label: string; value: React.ReactNode; total?: boolean; gap?: boolean; note?: string };
+  const rows: SummaryRow[] = [
+    { label: "Revenue (sales)", value: <Money cents={show.revenueCents} /> },
+    ...(nonSaleCents === 0 ? [] : [
+      { label: "Tips & bonuses", value: <Money cents={nonSaleCents} /> },
+    ]),
+    ...(giveawayFeeCents === 0 ? [] : [
+      { label: "Giveaway fees", value: <Money cents={giveawayFeeCents} /> },
+    ]),
+    ...(show.giveawayCount === 0 ? [] : [
+      { label: "Giveaway stock", value: <Money cents={-show.giveawayCostCents} />, note: `${show.giveawayCount} given` },
+    ]),
+    { label: "COGS (items sold)", value: <Money cents={-show.cogsCents} /> },
+    { label: "Shipping supplies", value: <Money cents={-show.shippingSuppliesCents} /> },
+    { label: "Labor", value: <Money cents={-show.laborCents} /> },
+    { label: "Total costs", value: <Money cents={-totalCostCents} />, total: true },
+    { label: "Payout", value: <Money cents={show.payoutCents} />, total: true },
+    { label: "Net profit", value: <Money cents={show.netCents} />, total: true },
+    { label: "Units sold", value: show.unitsSold, gap: true },
+    ...(avgSaleCents == null ? [] : [
+      { label: "Avg/unit", value: <Money cents={avgSaleCents} /> },
+    ]),
+    ...(show.sellingMinutes == null ? [] : [
+      { label: "Selling time", value: formatMinutes(show.sellingMinutes) },
+    ]),
+    ...(show.unitsPerHour == null ? [] : [
+      { label: "Units / hour", value: show.unitsPerHour },
+    ]),
   ];
   return (
     <div className="space-y-6">
@@ -43,12 +77,18 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <Card title="Summary">
           <table className="w-full text-sm">
-            <tbody>{rows.map(([k, v], i) => (
-              <tr key={i} className="border-b border-line last:border-0">
-                <td className="py-2 pr-8 text-slate-500">{k}</td>
-                <td className="py-2 text-right">{v}</td>
-              </tr>
-            ))}</tbody>
+            <tbody>{rows.map((r, i) => {
+              // A section's own top rule replaces the previous row's bottom one,
+              // so the boundary reads as one heavier line instead of two hairlines.
+              const endsSection = rows[i + 1]?.gap;
+              const pad = r.gap ? "pt-4 pb-2" : "py-2";
+              return (
+                <tr key={i} className={`${r.gap ? "border-t-2 border-t-slate-200 " : ""}${endsSection ? "" : "border-b border-line "}last:border-b-0`}>
+                  <td className={`${pad} pr-8 ${r.total ? "font-medium text-slate-700" : "text-slate-500"}`}>{r.label}{r.note && <span className="ml-2 text-xs text-slate-400">{r.note}</span>}</td>
+                  <td className={`${pad} text-right${r.total ? " font-semibold" : ""}`}>{r.value}</td>
+                </tr>
+              );
+            })}</tbody>
           </table>
         </Card>
 
