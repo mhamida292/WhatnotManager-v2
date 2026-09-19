@@ -75,8 +75,10 @@ export default async function InventoryPage() {
 
       <DismissedNames rows={dismissed} />
 
-      <InventoryTable whatnotOnly={whatnotOnly} items={active.map((i) => ({
-        id: i.id, name: i.name, location: i.location, unitCostCents: i.unitCostCents,
+      {/* All items, archived included -- the table's own Active/Archived filter
+          decides what shows, so search can reach archived stock. */}
+      <InventoryTable whatnotOnly={whatnotOnly} items={items.map((i) => ({
+        id: i.id, name: i.name, location: i.location, unitCostCents: i.unitCostCents, archivedAt: i.archivedAt,
         qtyPurchased: i.qtyPurchased, sold: i.sold, remaining: i.remaining,
         warehouse: i.warehouse, whatnot: i.whatnot,
         purchases: listPurchases(db, i.id).map((p) => ({ id: p.id, purchasedOn: p.purchasedOn, quantity: p.quantity, unitCostCents: p.unitCostCents })),

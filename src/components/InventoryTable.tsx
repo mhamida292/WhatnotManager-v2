@@ -15,7 +15,7 @@ import type { PurchaseRow } from "@/components/PurchaseList";
 import { stockBadge } from "@/lib/calc/stock-status";
 import { sortInventory, type InvSortKey, type SortDir } from "@/lib/ui/sort-inventory";
 import { INPUT_CLASS } from "@/lib/ui/inputs";
-import { filterInventory, type StockFilter } from "@/lib/ui/filter-inventory";
+import { filterInventory, type StockFilter, type ArchiveFilter } from "@/lib/ui/filter-inventory";
 import { bulkDeleteMessage } from "@/lib/ui/bulk-delete-message";
 
 export interface InventoryRow {
@@ -29,6 +29,7 @@ export interface InventoryRow {
   warehouse: number;
   whatnot: number;
   purchases: PurchaseRow[];
+  archivedAt: string | null;
 }
 
 const FULL_COLUMNS: { key: InvSortKey; label: string }[] = [
@@ -56,6 +57,7 @@ export function InventoryTable({ items, whatnotOnly }: { items: InventoryRow[]; 
   const [dir, setDir] = useState<SortDir>("asc");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StockFilter>("all");
+  const [archive, setArchive] = useState<ArchiveFilter>("active");
   const [editing, setEditing] = useState<InventoryRow | null>(null);
   const [adding, setAdding] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -66,7 +68,7 @@ export function InventoryTable({ items, whatnotOnly }: { items: InventoryRow[]; 
     else { setKey(k); setDir(k === "name" ? "asc" : "desc"); }
   };
 
-  const sorted = sortInventory(filterInventory(items, { search, status }), key, dir);
+  const sorted = sortInventory(filterInventory(items, { search, status, archive }), key, dir);
 
   const toggle = (id: number) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const clear = () => setSelected(new Set());
@@ -109,6 +111,11 @@ export function InventoryTable({ items, whatnotOnly }: { items: InventoryRow[]; 
           <option value="low">Low</option>
           <option value="out">Out</option>
         </select>
+        <select className={INPUT_CLASS} value={archive} onChange={(e) => setArchive(e.target.value as ArchiveFilter)}>
+          <option value="active">Active</option>
+          <option value="archived">Archived</option>
+          <option value="all">Active + archived</option>
+        </select>
         <div className="ml-auto"><Button onClick={() => setAdding(true)}>+ Add product</Button></div>
       </div>
 
@@ -129,11 +136,14 @@ export function InventoryTable({ items, whatnotOnly }: { items: InventoryRow[]; 
         {sorted.map((i) => {
           const badge = stockBadge(i.remaining);
           return (
-            <tr key={i.id} className={`border-t border-line ${selected.has(i.id) ? "bg-brand-50" : ""}`}>
+            <tr key={i.id} className={`border-t border-line ${selected.has(i.id) ? "bg-brand-50" : i.archivedAt ? "bg-slate-50 text-slate-400" : ""}`}>
               <td className="px-3 py-2"><input type="checkbox" checked={selected.has(i.id)} onChange={() => toggle(i.id)} aria-label={`Select ${i.name}`} /></td>
               <td className="px-3 py-2">
                 <Link href={`/inventory/${i.id}`} className="font-medium text-emerald-700 hover:underline">{i.name}</Link>
-                {badge && (
+                {i.archivedAt && (
+                  <span className="ml-2 align-middle"><Badge variant="slate">Archived</Badge></span>
+                )}
+                {badge && !i.archivedAt && (
                   <span className="ml-2 align-middle">
                     <Badge variant={i.remaining <= 0 ? "red" : "amber"}>{badge.label}</Badge>
                   </span>
@@ -157,8 +167,8 @@ export function InventoryTable({ items, whatnotOnly }: { items: InventoryRow[]; 
               <td className="px-3 py-2 text-right">
                 <div className="flex items-center justify-end gap-3">
                   <button onClick={() => setEditing(i)} className="text-sm font-medium text-emerald-700 hover:underline">Edit</button>
-                  {!whatnotOnly && <MoveStock itemId={i.id} itemName={i.name} warehouse={i.warehouse} whatnot={i.whatnot} />}
-                  <ArchiveButton itemId={i.id} archived={false} nudge={i.remaining <= 0} />
+                  {!whatnotOnly && !i.archivedAt && <MoveStock itemId={i.id} itemName={i.name} warehouse={i.warehouse} whatnot={i.whatnot} />}
+                  <ArchiveButton itemId={i.id} archived={i.archivedAt != null} nudge={!i.archivedAt && i.remaining <= 0} />
                 </div>
               </td>
             </tr>
