@@ -15,6 +15,29 @@ import { formatMinutes } from "@/lib/calc/selling-window";
 
 export const dynamic = "force-dynamic";
 
+type SummaryRow = { label: string; value: React.ReactNode; total?: boolean; note?: string };
+
+/** One labelled block of the summary card. The heading is what separates the
+ *  blocks, so the rows themselves need no extra spacing. */
+function SummarySection({ label, rows }: { label: string; rows: SummaryRow[] }) {
+  return (
+    <>
+      <p className="pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 first:pt-0">{label}</p>
+      <table className="w-full text-sm">
+        <tbody>{rows.map((r, i) => (
+          <tr key={i} className="border-b border-line last:border-b-0">
+            <td className={`py-2 pr-8 ${r.total ? "font-medium text-slate-700" : "text-slate-500"}`}>
+              {r.label}
+              {r.note && <span className="ml-2 text-xs text-slate-400">{r.note}</span>}
+            </td>
+            <td className={`py-2 text-right${r.total ? " font-semibold" : ""}`}>{r.value}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+    </>
+  );
+}
+
 export default async function ShowDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const db = await dbForRequest();
@@ -42,14 +65,13 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
   // as one subtraction: revenue + tips - total costs = net profit.
   const totalCostCents = -giveawayFeeCents + show.giveawayCostCents + show.cogsCents
     + show.shippingSuppliesCents + show.laborCents;
-  type SummaryRow = { label: string; value: React.ReactNode; total?: boolean; gap?: boolean; note?: string };
-  const rows: SummaryRow[] = [
+  const salesRows: SummaryRow[] = [
     { label: "Revenue (sales)", value: <Money cents={show.revenueCents} /> },
     ...(nonSaleCents === 0 ? [] : [
       { label: "Tips & bonuses", value: <Money cents={nonSaleCents} /> },
     ]),
     ...(giveawayFeeCents === 0 ? [] : [
-      { label: "Giveaway fees", value: <Money cents={giveawayFeeCents} /> },
+      { label: "Giveaway shipping fees", value: <Money cents={giveawayFeeCents} /> },
     ]),
     ...(show.giveawayCount === 0 ? [] : [
       { label: "Giveaway stock", value: <Money cents={-show.giveawayCostCents} />, note: `${show.giveawayCount} given` },
@@ -60,7 +82,9 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
     { label: "Total costs", value: <Money cents={-totalCostCents} />, total: true },
     { label: "Payout", value: <Money cents={show.payoutCents} />, total: true },
     { label: "Net profit", value: <Money cents={show.netCents} />, total: true },
-    { label: "Units sold", value: show.unitsSold, gap: true },
+  ];
+  const volumeRows: SummaryRow[] = [
+    { label: "Units sold", value: show.unitsSold },
     ...(avgSaleCents == null ? [] : [
       { label: "Avg/unit", value: <Money cents={avgSaleCents} /> },
     ]),
@@ -76,20 +100,8 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
       <PageHeader title={`Show — ${showSessionLabel(show)}`} subtitle="Profit and loss for this show" />
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <Card title="Summary">
-          <table className="w-full text-sm">
-            <tbody>{rows.map((r, i) => {
-              // A section's own top rule replaces the previous row's bottom one,
-              // so the boundary reads as one heavier line instead of two hairlines.
-              const endsSection = rows[i + 1]?.gap;
-              const pad = r.gap ? "pt-4 pb-2" : "py-2";
-              return (
-                <tr key={i} className={`${r.gap ? "border-t-2 border-t-slate-200 " : ""}${endsSection ? "" : "border-b border-line "}last:border-b-0`}>
-                  <td className={`${pad} pr-8 ${r.total ? "font-medium text-slate-700" : "text-slate-500"}`}>{r.label}{r.note && <span className="ml-2 text-xs text-slate-400">{r.note}</span>}</td>
-                  <td className={`${pad} text-right${r.total ? " font-semibold" : ""}`}>{r.value}</td>
-                </tr>
-              );
-            })}</tbody>
-          </table>
+          <SummarySection label="Sales" rows={salesRows} />
+          <SummarySection label="Volume" rows={volumeRows} />
         </Card>
 
         {show.products.length > 0 && <ProductsTable products={show.products} variant="show" />}
