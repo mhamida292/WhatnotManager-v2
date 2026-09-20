@@ -163,7 +163,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           {nonShows.length > 0 && (
             <tr className="border-t border-line bg-slate-50 text-slate-500">
               <td className="px-4 py-2 italic">
-                <Link href="/report#refunds" className="hover:underline">Non-show activity (refunds, fees, claims) · {nonShows.length}</Link>
+                <Link href="/refunds" className="hover:underline">Non-show activity (refunds, fees, claims) · {nonShows.length}</Link>
               </td>
               <td className="px-4 py-2"><Money cents={nonShowPayoutCents} /></td>
               <td className="px-4 py-2">$0.00</td>
