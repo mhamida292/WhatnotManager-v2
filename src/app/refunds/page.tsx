@@ -7,6 +7,7 @@ import { Stat } from "@/components/ui/Stat";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { RefundsCard } from "@/components/report/RefundsCard";
 import { summariseRefunds } from "@/lib/calc/refund-summary";
+import { describeActivity } from "@/lib/calc/activity-label";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,22 @@ export default async function RefundsPage() {
   // Dates that carry refunds/fees/claims but no sales -- the same story as the
   // itemised list, at day granularity.
   const rep = buildLedgerReport(db);
-  const nonShows = rep.shows.filter((x) => x.saleCount === 0);
-  const nonShowNetCents = nonShows.reduce((a, x) => a + x.netCents, 0);
+  const nonShowShows = rep.shows.filter((x) => x.saleCount === 0);
+  const nonShowNetCents = nonShowShows.reduce((a, x) => a + x.netCents, 0);
+  // A date and an amount say nothing about what happened; name each day from
+  // the rows behind it.
+  const activityRows = db.prepare(
+    "SELECT show_id AS showId, kind, message FROM ledger_transactions WHERE show_id IS NOT NULL"
+  ).all() as { showId: number; kind: string; message: string }[];
+  const byShow = new Map<number, { kind: string; message: string }[]>();
+  for (const r of activityRows) {
+    if (!byShow.has(r.showId)) byShow.set(r.showId, []);
+    byShow.get(r.showId)!.push({ kind: r.kind, message: r.message ?? "" });
+  }
+  const nonShows = nonShowShows.map((x) => ({
+    showId: x.showId, showDate: x.showDate, netCents: x.netCents,
+    what: describeActivity(byShow.get(x.showId) ?? []),
+  }));
 
   return (
     <div className="space-y-6">
@@ -53,11 +68,14 @@ export default async function RefundsPage() {
           <p className="text-sm text-slate-500">
             Refunds, fees, and claims landing on dates with no sales. Counted in your dashboard totals.
           </p>
-          <ul className="mt-2 grid gap-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-2 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
             {nonShows.map((x) => (
-              <li key={x.showId} className="flex justify-between gap-3 border-b border-line py-1">
-                <span className="text-slate-600">{x.showDate}</span>
-                <span><Money cents={x.netCents} /></span>
+              <li key={x.showId} className="flex items-baseline justify-between gap-3 border-b border-line py-1.5">
+                <span className="flex min-w-0 items-baseline gap-2">
+                  <span className="shrink-0 text-slate-600">{x.showDate}</span>
+                  <span className="truncate text-xs text-slate-400">{x.what}</span>
+                </span>
+                <span className="shrink-0"><Money cents={x.netCents} /></span>
               </li>
             ))}
           </ul>
