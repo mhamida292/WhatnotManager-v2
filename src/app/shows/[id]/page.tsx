@@ -85,6 +85,11 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
   ];
   const volumeRows: SummaryRow[] = [
     { label: "Units sold", value: show.unitsSold },
+    // Every giveaway ships as its own order, so packages out of the door is
+    // merch sold plus giveaways -- the figure that tracks shipping effort.
+    ...(show.giveawayCount === 0 ? [] : [
+      { label: "Total orders", value: show.unitsSold + show.giveawayCount, note: `+${show.giveawayCount} giveaways` },
+    ]),
     ...(avgSaleCents == null ? [] : [
       { label: "Avg/unit", value: <Money cents={avgSaleCents} /> },
     ]),
