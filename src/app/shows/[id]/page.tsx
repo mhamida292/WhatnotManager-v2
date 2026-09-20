@@ -57,18 +57,28 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
   // are different money, so they sit as separate cost lines -- adjacent, since
   // they answer the same question together.
   const giveawayFeeCents = show.giveawayTotalCents;
-  // Whatever payout holds beyond sales and that fee: tips, bonuses, refunds,
-  // adjustments. A residual rather than tip+bonus, so the card reconciles on
-  // every show, including ones carrying a refund.
+  // Payout beyond sales and the giveaway fee splits into named parts. Naming
+  // them matters: promo spend and refunds were reading as "tips & bonuses" on
+  // shows with no tip at all. Refunds are the remainder, so the card still
+  // reconciles exactly whatever Whatnot puts in an adjustment.
   const nonSaleCents = show.payoutCents - show.revenueCents - giveawayFeeCents;
+  const tipsBonusCents = show.tipTotalCents + show.bonusTotalCents;
+  const promoFeesCents = show.otherTotalCents;
+  const refundCents = nonSaleCents - tipsBonusCents - promoFeesCents;
   // Folding the giveaway fee in with the other costs is what lets the card read
   // as one subtraction: revenue + tips - total costs = net profit.
   const totalCostCents = -giveawayFeeCents + show.giveawayCostCents + show.cogsCents
     + show.shippingSuppliesCents + show.laborCents;
   const salesRows: SummaryRow[] = [
     { label: "Revenue (sales)", value: <Money cents={show.revenueCents} /> },
-    ...(nonSaleCents === 0 ? [] : [
-      { label: "Tips & bonuses", value: <Money cents={nonSaleCents} /> },
+    ...(tipsBonusCents === 0 ? [] : [
+      { label: "Tips & bonuses", value: <Money cents={tipsBonusCents} /> },
+    ]),
+    ...(promoFeesCents === 0 ? [] : [
+      { label: "Promotion & fees", value: <Money cents={promoFeesCents} /> },
+    ]),
+    ...(refundCents === 0 ? [] : [
+      { label: "Refunds", value: <Money cents={refundCents} /> },
     ]),
     ...(giveawayFeeCents === 0 ? [] : [
       { label: "Giveaway shipping fees", value: <Money cents={giveawayFeeCents} /> },
