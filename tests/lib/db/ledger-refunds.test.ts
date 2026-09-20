@@ -18,6 +18,21 @@ beforeEach(() => {
   saveLedger(db, parseLedger(csv));
 });
 
+describe("listRefunds ordering", () => {
+  // created_at is a formatted string ("Sep 9, 2026, 6:52:28 AM"). Sorting on it
+  // puts Sep before Jun and "Sep 9" before "Sep 15".
+  it("returns refunds newest first by real date, not by month name", () => {
+    const d = createDb(":memory:");
+    saveLedger(d, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 30, 2026, 9:00:00 AM","-$1.00","","","Reversal of sales transaction for order refund","completed","ADJUSTMENT",""
+"Sep 9, 2026, 9:00:00 AM","-$2.00","","","Reversal of sales transaction for order refund","completed","ADJUSTMENT",""
+"Sep 15, 2026, 9:00:00 AM","-$3.00","","","Reversal of sales transaction for order refund","completed","ADJUSTMENT",""
+"Aug 1, 2026, 9:00:00 AM","-$4.00","","","Reversal of sales transaction for order refund","completed","ADJUSTMENT",""`));
+    expect(listRefunds(d).map((r) => r.showDate))
+      .toEqual(["2026-09-15", "2026-09-09", "2026-08-01", "2026-06-30"]);
+  });
+});
+
 describe("listRefunds", () => {
   it("matches the sale-reversal to its product via order_id and links the item", () => {
     const refunds = listRefunds(db);

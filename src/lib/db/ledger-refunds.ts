@@ -13,7 +13,10 @@ export interface RefundRow {
 export function listRefunds(db: DB): RefundRow[] {
   const rows = db.prepare(
     `SELECT show_date AS showDate, amount_cents AS amountCents, order_id AS orderId, message
-     FROM ledger_transactions WHERE kind = 'refund' ORDER BY created_at DESC`
+     FROM ledger_transactions WHERE kind = 'refund'
+     -- show_date is YYYY-MM-DD and sorts correctly; created_at is a formatted
+     -- string ("Sep 9, 2026, ...") that sorts Sep before Jun and 9 before 15.
+     ORDER BY show_date DESC, id DESC`
   ).all() as { showDate: string; amountCents: number; orderId: string | null; message: string }[];
 
   const saleByOrder = new Map<string, string>();
