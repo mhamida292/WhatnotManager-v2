@@ -22,7 +22,7 @@ type SummaryRow = { label: string; value: React.ReactNode; total?: boolean; note
 function SummarySection({ label, rows }: { label: string; rows: SummaryRow[] }) {
   return (
     <>
-      <p className="pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 first:pt-0">{label}</p>
+      <p className="mb-1 border-b border-slate-300 pb-1.5 pt-4 text-xs font-bold uppercase tracking-widest text-slate-600 first:pt-0">{label}</p>
       <table className="w-full text-sm">
         <tbody>{rows.map((r, i) => (
           <tr key={i} className="border-b border-line last:border-b-0">
