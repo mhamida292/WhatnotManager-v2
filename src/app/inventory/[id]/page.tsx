@@ -6,6 +6,7 @@ import {
 } from "@/lib/db/inventory";
 import { listAdjustments, sumAdjustments } from "@/lib/db/adjustments";
 import { getSettings } from "@/lib/db/settings";
+import { avgPerUnitCents } from "@/lib/calc/avg-per-unit";
 import { Money } from "@/components/Money";
 import { itemEarnings } from "@/lib/calc/item-earnings";
 import { Card } from "@/components/ui/Card";
@@ -57,6 +58,7 @@ export default async function ItemDetail({ params }: { params: Promise<{ id: str
   const initialAdjustments = listAdjustments(db, itemId);
   const { whatnotOnly } = getSettings(db);
   const totalSold = ledgerSold + legacySold + wholesale;
+  const avgSoldCents = avgPerUnitCents(earnings.revenueCents, ledgerSold);
 
   const summary: [string, React.ReactNode][] = [
     ["Unit cost", <Money cents={item.unitCostCents} />],
@@ -68,6 +70,11 @@ export default async function ItemDetail({ params }: { params: Promise<{ id: str
     ["Adjustments", <span className={adjustments >= 0 ? "text-emerald-700" : "text-red-600"}>{adjustments >= 0 ? `+${adjustments}` : adjustments}</span>],
     ["Remaining", remaining],
     ["Revenue (ledger sales)", <Money cents={earnings.revenueCents} />],
+    // Revenue is ledger-only, so the average divides by ledger sales -- dividing
+    // by total sold would mix in wholesale and legacy units it never counted.
+    ...(avgSoldCents == null ? [] : [
+      ["Avg sold price", <Money cents={avgSoldCents} />] as [string, React.ReactNode],
+    ]),
     ["Cost of units sold", <Money cents={earnings.costCents} />],
     ["Profit", <span className={earnings.profitCents >= 0 ? "text-emerald-700" : "text-red-600"}><Money cents={earnings.profitCents} /></span>],
   ];
