@@ -4,6 +4,7 @@ import { listItems } from "@/lib/db/inventory";
 import { listLedgerTransactions } from "@/lib/db/ledger";
 import { allocateLabor } from "./labor-allocation";
 import { sellingWindow } from "./selling-window";
+import { cancelledOrderIds } from "@/lib/db/ledger-refunds";
 import { listPayroll } from "@/lib/db/payroll";
 import { dismissedCodes } from "@/lib/db/dismissed-names";
 import { isPayoutFailure, unrecognizedPayoutMessage } from "@/lib/csv/ledger";
@@ -163,6 +164,12 @@ export function buildLedgerReport(db: DB): LedgerReport {
   const dateCounts = new Map<string, number>();
   for (const s of allShows) dateCounts.set(s.showDate, (dateCounts.get(s.showDate) ?? 0) + 1);
 
+  // A cancelled order never shipped. Its sale and reversal already cancel each
+  // other out in payout, so letting the sale build a product line would book
+  // revenue that was never earned and COGS for stock still on the shelf --
+  // making a cancellation cost the item's cost in profit.
+  const cancelled = cancelledOrderIds(db);
+
   for (const s of allShows) {
     const rows = byShow.get(s.id) ?? [];
     const productMap = new Map<string, ReportProductLine>();
@@ -172,6 +179,8 @@ export function buildLedgerReport(db: DB): LedgerReport {
     let giveaway = 0, giveawayCount = 0, tip = 0, bonus = 0, other = 0, payout = 0, withdrawn = 0, saleCount = 0, payoutFailure = 0;
 
     for (const t of rows) {
+      // Skipped for the product lines only: the row still reaches payout below.
+      const isCancelledSale = t.kind === "sale" && !!t.orderId && cancelled.has(t.orderId);
       if (t.kind === "payout") {
         withdrawn += t.amountCents;
         // A returned payout still nets to zero against its withdrawal; tracked
@@ -181,6 +190,7 @@ export function buildLedgerReport(db: DB): LedgerReport {
       }
       if (unrecognizedPayoutMessage(t.txnType ?? "", t.message ?? "")) unrecognizedPayouts.add(t.message!);
       payout += t.amountCents;
+      if (isCancelledSale) continue;
       if (t.kind === "sale") saleCount += 1;
       if (pool && t.kind === "sale") {
         pooledSales.push({

@@ -58,6 +58,38 @@ describe("buildLedgerReport", () => {
     expect(show.unitsPerHour).toBeNull();
   });
 
+  // A cancelled order never shipped: its payout nets to zero, so booking COGS
+  // against it would make the cancellation cost the item's cost in profit.
+  it("keeps a cancelled order out of revenue, units and COGS", () => {
+    const d = createDb(":memory:");
+    const thing = insertItem(d, { name: "Thing", unitCostCents: 800, qtyPurchased: 10, lotId: null });
+    setAlias(d, "Thing", thing);
+    saveLedger(d, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 12, 2026, 10:00:00 AM","$20.00","L1","KEEP","Earnings for selling a Thing #1","completed","SALES",""
+"Jun 12, 2026, 10:05:00 AM","$53.92","L2","GONE","Earnings for selling a Thing #2","completed","SALES",""
+"Jun 12, 2026, 11:00:00 AM","-$53.92","L2","GONE","Reversal of sales transaction for order refund","completed","ADJUSTMENT",""`));
+    const show = buildLedgerReport(d).shows[0];
+    expect(show.revenueCents).toBe(2000);   // the cancelled $53.92 is gone
+    expect(show.unitsSold).toBe(1);
+    expect(show.cogsCents).toBe(800);       // one unit's cost, not two
+    // Payout still carries both rows, which cancel each other out.
+    expect(show.payoutCents).toBe(2000);
+    expect(show.netCents).toBe(2000 - 800);
+  });
+
+  it("still books a PARTIAL refund as a completed sale", () => {
+    const d = createDb(":memory:");
+    const thing = insertItem(d, { name: "Thing", unitCostCents: 800, qtyPurchased: 10, lotId: null });
+    setAlias(d, "Thing", thing);
+    saveLedger(d, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 12, 2026, 10:05:00 AM","$53.92","L2","PART","Earnings for selling a Thing #2","completed","SALES",""
+"Jun 12, 2026, 11:00:00 AM","-$10.00","L2","PART","Reversal of sales transaction for order refund","completed","ADJUSTMENT",""`));
+    const show = buildLedgerReport(d).shows[0];
+    expect(show.revenueCents).toBe(5392);  // goods shipped; sale still counts
+    expect(show.unitsSold).toBe(1);
+    expect(show.cogsCents).toBe(800);
+  });
+
   it("sums show revenue from its product lines", () => {
     const show = buildLedgerReport(db).shows[0];
     expect(show.revenueCents).toBe(49 + 200); // both sales, mapped or not

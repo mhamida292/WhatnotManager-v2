@@ -12,6 +12,34 @@ export interface RefundRow {
   isCancellation: boolean;
 }
 
+/**
+ * Orders whose reversal exactly offsets everything they earned: cancelled
+ * before shipping, not returned. Whatnot writes the same message for both, so
+ * the amount is the only signal.
+ *
+ * Shared with buildLedgerReport, which must not book revenue or COGS against a
+ * sale that never happened.
+ */
+export function cancelledOrderIds(db: DB): Set<string> {
+  const saleTotal = new Map<string, number>();
+  for (const s of db.prepare(
+    `SELECT order_id AS orderId, COALESCE(SUM(amount_cents),0) AS total FROM ledger_transactions
+     WHERE kind = 'sale' AND order_id <> '' GROUP BY order_id`
+  ).all() as { orderId: string; total: number }[]) {
+    saleTotal.set(s.orderId, Number(s.total));
+  }
+  const out = new Set<string>();
+  for (const r of db.prepare(
+    `SELECT order_id AS orderId, COALESCE(SUM(amount_cents),0) AS total FROM ledger_transactions
+     WHERE kind = 'refund' AND order_id <> '' AND message NOT LIKE '%shipping%'
+     GROUP BY order_id`
+  ).all() as { orderId: string; total: number }[]) {
+    const sale = saleTotal.get(r.orderId);
+    if (sale != null && sale > 0 && sale + Number(r.total) === 0) out.add(r.orderId);
+  }
+  return out;
+}
+
 export function listRefunds(db: DB): RefundRow[] {
   const rows = db.prepare(
     `SELECT show_date AS showDate, amount_cents AS amountCents, order_id AS orderId, message
