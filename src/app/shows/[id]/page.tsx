@@ -10,8 +10,33 @@ import { DeleteShowButton } from "@/components/DeleteShowButton";
 import GiveawayAllocationEditor from "@/components/GiveawayAllocationEditor";
 import BundleEditor from "@/components/BundleEditor";
 import { showSessionLabel } from "@/lib/ui/show-label";
+import { avgPerUnitCents } from "@/lib/calc/avg-per-unit";
+import { formatMinutes } from "@/lib/calc/selling-window";
 
 export const dynamic = "force-dynamic";
+
+type SummaryRow = { label: string; value: React.ReactNode; total?: boolean; note?: string };
+
+/** One labelled block of the summary card. The heading is what separates the
+ *  blocks, so the rows themselves need no extra spacing. */
+function SummarySection({ label, rows }: { label: string; rows: SummaryRow[] }) {
+  return (
+    <>
+      <p className="mb-1 border-b border-slate-300 pb-1.5 pt-9 text-xs font-bold uppercase tracking-widest text-slate-600 first:pt-0">{label}</p>
+      <table className="w-full text-sm">
+        <tbody>{rows.map((r, i) => (
+          <tr key={i} className="border-b border-line last:border-b-0">
+            <td className={`py-2 pr-8 ${r.total ? "font-medium text-slate-700" : "text-slate-500"}`}>
+              {r.label}
+              {r.note && <span className="ml-2 text-xs text-slate-400">{r.note}</span>}
+            </td>
+            <td className={`py-2 text-right${r.total ? " font-semibold" : ""}`}>{r.value}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+    </>
+  );
+}
 
 export default async function ShowDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,29 +52,71 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
     );
   }
   const impact = showDeleteImpact(db, show.showId);
-  const giveawayLabel = `Giveaways (${show.giveawayCount})`;
-  const rows: [string, React.ReactNode][] = [
-    ["Payout", <Money cents={show.payoutCents} />],
-    ["Units sold", show.unitsSold],
-    ["COGS (items sold)", <Money cents={-show.cogsCents} />],
-    [giveawayLabel, <Money cents={-show.giveawayCostCents} />],
-    ["Shipping supplies", <Money cents={-show.shippingSuppliesCents} />],
-    ["Labor (wages this day)", <Money cents={-show.laborCents} />],
-    ["Net profit", <Money cents={show.netCents} />],
+  const avgSaleCents = avgPerUnitCents(show.revenueCents, show.unitsSold);
+  // Whatnot's per-giveaway fee (ledger) and the stock given away (allocations)
+  // are different money, so they sit as separate cost lines -- adjacent, since
+  // they answer the same question together.
+  const giveawayFeeCents = show.giveawayTotalCents;
+  // Payout beyond sales and the giveaway fee splits into named parts. Naming
+  // them matters: promo spend and refunds were reading as "tips & bonuses" on
+  // shows with no tip at all. Refunds are the remainder, so the card still
+  // reconciles exactly whatever Whatnot puts in an adjustment.
+  const nonSaleCents = show.payoutCents - show.revenueCents - giveawayFeeCents;
+  const tipsBonusCents = show.tipTotalCents + show.bonusTotalCents;
+  const promoFeesCents = show.otherTotalCents;
+  const refundCents = nonSaleCents - tipsBonusCents - promoFeesCents;
+  // Folding the giveaway fee in with the other costs is what lets the card read
+  // as one subtraction: revenue + tips - total costs = net profit.
+  const totalCostCents = -giveawayFeeCents + show.giveawayCostCents + show.cogsCents
+    + show.shippingSuppliesCents + show.laborCents;
+  const salesRows: SummaryRow[] = [
+    { label: "Revenue (sales)", value: <Money cents={show.revenueCents} /> },
+    ...(tipsBonusCents === 0 ? [] : [
+      { label: "Tips & bonuses", value: <Money cents={tipsBonusCents} /> },
+    ]),
+    ...(promoFeesCents === 0 ? [] : [
+      { label: "Promotion & fees", value: <Money cents={promoFeesCents} /> },
+    ]),
+    ...(refundCents === 0 ? [] : [
+      { label: "Refunds", value: <Money cents={refundCents} /> },
+    ]),
+    ...(giveawayFeeCents === 0 ? [] : [
+      { label: "Giveaway shipping fees", value: <Money cents={giveawayFeeCents} /> },
+    ]),
+    ...(show.giveawayCount === 0 ? [] : [
+      { label: "Giveaway stock", value: <Money cents={-show.giveawayCostCents} />, note: `${show.giveawayCount} given` },
+    ]),
+    { label: "COGS (items sold)", value: <Money cents={-show.cogsCents} /> },
+    { label: "Shipping supplies", value: <Money cents={-show.shippingSuppliesCents} /> },
+    { label: "Labor", value: <Money cents={-show.laborCents} /> },
+    { label: "Total costs", value: <Money cents={-totalCostCents} />, total: true },
+    { label: "Payout", value: <Money cents={show.payoutCents} />, total: true },
+    { label: "Net profit", value: <Money cents={show.netCents} />, total: true },
+  ];
+  const volumeRows: SummaryRow[] = [
+    { label: "Units sold", value: show.unitsSold },
+    // Every giveaway ships as its own order, so packages out of the door is
+    // merch sold plus giveaways -- the figure that tracks shipping effort.
+    ...(show.giveawayCount === 0 ? [] : [
+      { label: "Total orders", value: show.unitsSold + show.giveawayCount, note: `+${show.giveawayCount} giveaways` },
+    ]),
+    ...(avgSaleCents == null ? [] : [
+      { label: "Avg/unit", value: <Money cents={avgSaleCents} /> },
+    ]),
+    ...(show.sellingMinutes == null ? [] : [
+      { label: "Selling time", value: formatMinutes(show.sellingMinutes) },
+    ]),
+    ...(show.unitsPerHour == null ? [] : [
+      { label: "Units / hour", value: show.unitsPerHour },
+    ]),
   ];
   return (
     <div className="space-y-6">
       <PageHeader title={`Show — ${showSessionLabel(show)}`} subtitle="Profit and loss for this show" />
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <Card title="Summary">
-          <table className="w-full text-sm">
-            <tbody>{rows.map(([k, v], i) => (
-              <tr key={i} className="border-b border-line last:border-0">
-                <td className="py-2 pr-8 text-slate-500">{k}</td>
-                <td className="py-2 text-right">{v}</td>
-              </tr>
-            ))}</tbody>
-          </table>
+          <SummarySection label="Sales" rows={salesRows} />
+          <SummarySection label="Volume" rows={volumeRows} />
         </Card>
 
         {show.products.length > 0 && <ProductsTable products={show.products} variant="show" />}

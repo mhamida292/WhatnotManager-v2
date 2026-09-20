@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 const baseLinks: [string, string][] = [
   ["/", "Dashboard"], ["/shows", "Shows"], ["/inventory", "Inventory"],
   ["/invoices", "Invoices"], ["/expenses", "Expenses"], ["/payroll", "Payroll"],
-  ["/report", "Report"], ["/settings", "Settings"],
+  ["/refunds", "Refunds"], ["/settings", "Settings"],
 ];
 
 export function Nav({ user }: { user: { username: string; is_admin: number } | null }) {
@@ -24,7 +24,7 @@ export function Nav({ user }: { user: { username: string; is_admin: number } | n
 
   return (
     <nav className="relative border-b border-line bg-white">
-      <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 sm:px-6">
+      <div className="mx-auto flex max-w-screen-2xl items-center gap-6 px-4 sm:px-6">
         <span className="shrink-0 py-4 text-sm font-bold tracking-tight text-brand-600">◆ Warehouse Manager</span>
 
         {/* Desktop links */}

@@ -8,6 +8,9 @@ import { Card } from "@/components/ui/Card";
 import { InvoiceEditor } from "@/components/InvoiceEditor";
 import { InvoiceDocument } from "@/components/InvoiceDocument";
 import { InvoiceActions } from "@/components/InvoiceActions";
+import { Stat } from "@/components/ui/Stat";
+import { Money } from "@/components/Money";
+import { invoiceAverages } from "@/lib/calc/invoice-averages";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +31,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const businessName = getSettings(db).businessName;
 
   const isSale = invoice.direction === "sale";
+  // Page-only figures: deliberately outside InvoiceDocument, which the print
+  // page and the PDF render as the document the supplier/customer sees.
+  const avg = invoiceAverages(lines, invoice.direction);
   const subtitle =
     invoice.status === "draft"
       ? isSale
@@ -44,6 +50,18 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         action={<Link className="text-sm text-emerald-700 hover:underline" href="/invoices">← Invoices</Link>} />
 
       <InvoiceActions id={invoice.id} status={invoice.status} canPost={lines.length > 0} paid={invoice.paid} items={items} />
+
+      {avg.avgItemCents != null && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Stat label="Units" value={avg.units} sub={<><Money cents={avg.itemCents} /> of merchandise</>} />
+          <Stat label={isSale ? "Avg price / unit" : "Avg cost / unit"} value={<Money cents={avg.avgItemCents} />}
+            sub="Item lines only" />
+          <Stat label="With charges" value={<Money cents={avg.avgLandedCents!} />}
+            sub={avg.chargeCents === 0
+              ? "No charge lines"
+              : <><Money cents={avg.chargeCents} /> in charges spread over {avg.units} units</>} />
+        </div>
+      )}
 
       <Card title={invoice.status === "draft" ? "Edit invoice" : "Invoice"}>
         {invoice.status === "draft"

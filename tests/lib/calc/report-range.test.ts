@@ -2,15 +2,27 @@ import { describe, it, expect } from "vitest";
 import { narrowReportToRange } from "@/lib/calc/report-range";
 import type { LedgerReport, ReportShow } from "@/lib/calc/ledger-report";
 
-const show = (showDate: string, over: Partial<ReportShow> = {}): ReportShow => ({
-  showId: Number(showDate.replace(/-/g, "").slice(4)), showDate, sessionSeq: 0,
-  timeRange: "", dateHasMultipleSessions: false, products: [],
-  giveawayTotalCents: 0, giveawayCount: 0, giveawayCostCents: 0, giveawayUnallocated: false,
-  tipTotalCents: 0, bonusTotalCents: 0, otherTotalCents: 0,
-  payoutCents: 1000, withdrawnToBankCents: 0, payoutFailureCents: 0,
-  cogsCents: 400, shippingSuppliesCents: 0, laborCents: 100,
-  netCents: 500, unitsSold: 10, saleCount: 5, ...over,
-});
+const show = (showDate: string, over: Partial<ReportShow> = {}): ReportShow => {
+  const base: ReportShow = {
+    showId: Number(showDate.replace(/-/g, "").slice(4)), showDate, sessionSeq: 0,
+    timeRange: "", dateHasMultipleSessions: false, products: [],
+    giveawayTotalCents: 0, giveawayCount: 0, giveawayCostCents: 0, giveawayUnallocated: false,
+    tipTotalCents: 0, bonusTotalCents: 0, otherTotalCents: 0,
+    payoutCents: 1000, withdrawnToBankCents: 0, payoutFailureCents: 0,
+    cogsCents: 400, shippingSuppliesCents: 0, laborCents: 100,
+    netCents: 500, revenueCents: 0, unitsSold: 10, saleCount: 5,
+    sellingMinutes: null, unitsPerHour: null, ...over,
+  };
+  // buildLedgerReport always derives revenue from the show's own lines, so a
+  // fixture that overrides products/pooledSales gets a matching revenue.
+  if (over.revenueCents !== undefined) return base;
+  return {
+    ...base,
+    revenueCents: base.pooledSales
+      ? base.pooledSales.reduce((a, p) => a + p.amountCents, 0)
+      : base.products.reduce((a, p) => a + p.revenueCents, 0),
+  };
+};
 
 const report = (shows: ReportShow[], over: Partial<LedgerReport> = {}): LedgerReport => ({
   shows,

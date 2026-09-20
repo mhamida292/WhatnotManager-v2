@@ -71,6 +71,12 @@ describe("refund classification", () => {
     expect(parseLedger(csv("Reversal of sales transaction for order refund", "ADJUSTMENT"))[0].kind).toBe("refund");
     expect(parseLedger(csv("Deduction for order refund shipping costs [Order Id: 1]", "ADJUSTMENT"))[0].kind).toBe("refund");
   });
+
+  // A cancellation fee is money lost on an order that never shipped: it belongs
+  // with refunds rather than pooled with show promotion spend in 'other'.
+  it("classifies a cancellation fee as refund, not other", () => {
+    expect(parseLedger(csv("Fee for order cancellation", "ADJUSTMENT"))[0].kind).toBe("refund");
+  });
   it("still classifies Sales Match Bonus and other adjustments correctly", () => {
     expect(parseLedger(csv("New Seller Sales Match Bonus", "ADJUSTMENT"))[0].kind).toBe("bonus");
     expect(parseLedger(csv("Seller purchased Show Boost for ...", "ADJUSTMENT"))[0].kind).toBe("other");

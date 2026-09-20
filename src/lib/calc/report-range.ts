@@ -35,14 +35,9 @@ export function narrowReportToRange(report: LedgerReport, range?: DateRange): Le
     owedToYouCents: invoices.filter((i) => !i.paid).reduce((a, i) => a + i.revenueCents, 0),
   };
 
-  // Revenue mirrors buildLedgerReport: pooled sales when pooled costing is on,
-  // otherwise the product lines. Wholesale that was PAID folds into the total.
-  const showRevenue = shows.reduce(
-    (a, s) => a + (s.pooledSales
-      ? s.pooledSales.reduce((x, p) => x + p.amountCents, 0)
-      : s.products.reduce((x, p) => x + p.revenueCents, 0)),
-    0,
-  );
+  // Each show carries its own revenue (pooled sales or product lines, decided
+  // in buildLedgerReport). Wholesale that was PAID folds into the total.
+  const showRevenue = shows.reduce((a, s) => a + s.revenueCents, 0);
 
   // A dismissed name still has mapped: false on its product line -- only
   // buildLedgerReport knows it was dismissed (it never made it into

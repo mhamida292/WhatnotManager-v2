@@ -3,10 +3,10 @@ import { Card } from "@/components/ui/Card";
 import { Money } from "@/components/Money";
 import type { RefundRow } from "@/lib/db/ledger-refunds";
 
-export function RefundsCard({ refunds, totalCents }: { refunds: RefundRow[]; totalCents: number }) {
+export function RefundsCard({ refunds, totalCents, title = "Refunds" }: { refunds: RefundRow[]; totalCents: number; title?: string }) {
   if (refunds.length === 0) return null;
   return (
-    <Card title={<div className="flex justify-between"><span>Refunds ({refunds.length})</span><span className="normal-case"><Money cents={totalCents} /></span></div>}>
+    <Card title={<div className="flex justify-between"><span>{title} ({refunds.length})</span><span className="normal-case"><Money cents={totalCents} /></span></div>}>
       <table className="w-full text-sm">
         <thead className="text-xs uppercase text-slate-500">
           <tr><th className="py-1 text-left">Date</th><th className="py-1 text-left">Product</th><th className="py-1 text-left">Order #</th><th className="py-1 text-right">Amount</th></tr>

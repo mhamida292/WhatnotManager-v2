@@ -11,14 +11,9 @@ and expenses (with reimbursement tracking), plus a Whatnot sales aggregator.
 ## Test
     npm test
 ## To do: 
-- Add invoice items that don't post to inventory (transaction fee, shipping)
-- Add invoice "deductions" that subtract from invoice total.
 - Add Total amount spent on specific supplier from invoices
-- Add total pieces to invoice
-- Add SKU manager
 - Add Photo system
-- Add solid renaming system for inventory and items in sales / purchases 
-- Add notes system 
+- Extend the notes system beyond invoices (inventory items, shows)
 - Payroll: sub-penny piece rates (rate_cents is whole cents), and auto-counting pieces from show or invoice data
 ## Multi-user / Workspaces
 
@@ -100,5 +95,10 @@ On a fresh `data/` directory, the app creates and migrates the schema automatica
 
 ## Workflow
 1. Inventory page: add items, map Whatnot product names to items.
-2. Shows page: upload the Whatnot CSV, review auto-classified rows, enter payout + shipping supplies, save.
-3. Dashboard: net profit, your 80% share, inventory spend, expenses.
+2. Invoices page: record a purchase or sale, add item lines plus any charges/deductions
+   (freight, fees), then Post to stock inventory. The page shows units and the average
+   cost per unit, both on merchandise alone and landed (charges spread over the units).
+3. Shows page: upload the Whatnot CSV, review auto-classified rows, enter payout + shipping supplies, save.
+   Each show also reports its average sale price per unit.
+4. Payroll page: pay by hour, piece or package; tracks what is still owed.
+5. Dashboard: net profit, your 80% share, inventory spend, expenses.

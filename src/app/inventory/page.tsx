@@ -1,5 +1,6 @@
 import { dbForRequest } from "@/lib/auth/request";
-import { listItems, qtyRemaining, qtySold, warehouseQty, whatnotQty } from "@/lib/db/inventory";
+import { listItems } from "@/lib/db/inventory";
+import { itemQuantities } from "@/lib/db/item-quantities";
 import { netInventorySpend } from "@/lib/calc/inventory-spend";
 import { inStockSummary } from "@/lib/calc/in-stock";
 import { buildLedgerReport } from "@/lib/calc/ledger-report";
@@ -24,10 +25,10 @@ export const dynamic = "force-dynamic";
 export default async function InventoryPage() {
   const db = await dbForRequest();
   const { whatnotOnly } = getSettings(db);
-  const items = listItems(db).map((i) => ({
-    ...i, sold: qtySold(db, i.id), remaining: qtyRemaining(db, i.id),
-    warehouse: warehouseQty(db, i.id), whatnot: whatnotQty(db, i.id),
-  }));
+  // One grouped pass instead of ~23 queries per item (see item-quantities.ts).
+  const qty = itemQuantities(db);
+  const ZERO = { sold: 0, remaining: 0, warehouse: 0, whatnot: 0 };
+  const items = listItems(db).map((i) => ({ ...i, ...(qty.get(i.id) ?? ZERO) }));
   const active = items.filter((i) => i.archivedAt == null);
   const archived = items.filter((i) => i.archivedAt != null);
   const seen = seenProductNames(db);
@@ -75,8 +76,10 @@ export default async function InventoryPage() {
 
       <DismissedNames rows={dismissed} />
 
-      <InventoryTable whatnotOnly={whatnotOnly} items={active.map((i) => ({
-        id: i.id, name: i.name, location: i.location, unitCostCents: i.unitCostCents,
+      {/* All items, archived included -- the table's own Active/Archived filter
+          decides what shows, so search can reach archived stock. */}
+      <InventoryTable whatnotOnly={whatnotOnly} items={items.map((i) => ({
+        id: i.id, name: i.name, location: i.location, unitCostCents: i.unitCostCents, archivedAt: i.archivedAt,
         qtyPurchased: i.qtyPurchased, sold: i.sold, remaining: i.remaining,
         warehouse: i.warehouse, whatnot: i.whatnot,
         purchases: listPurchases(db, i.id).map((p) => ({ id: p.id, purchasedOn: p.purchasedOn, quantity: p.quantity, unitCostCents: p.unitCostCents })),
