@@ -133,7 +133,9 @@ export function ProductsTable({ products, variant }: { products: ReportProductLi
           </th>
         ))}>
           {rows.map((p, idx) => (
-            <tr key={`${p.productName}-${idx}`} className="border-t border-line">
+            // Zebra striping: shading beats hairlines for tracking a row across
+            // seven columns, so the stripe carries it and the rule stays light.
+            <tr key={`${p.productName}-${idx}`} className={`border-t border-line ${idx % 2 === 1 ? "bg-slate-50" : ""}`}>
               <td className="px-3 py-2">{nameCell(p)}</td>
               <td className="px-3 py-2">{p.qty}</td>
               <td className="px-3 py-2">{p.unitCostCents == null ? "—" : <Money cents={p.unitCostCents} />}</td>
