@@ -18,6 +18,54 @@ beforeEach(() => {
   saveLedger(db, parseLedger(csv));
 });
 
+describe("cancellation detection", () => {
+  // Whatnot writes the SAME message for a cancellation and a return, so the
+  // only signal is whether the reversal wipes out the whole sale.
+  const build = (saleCents: number, reversalCents: number) => {
+    const d = createDb(":memory:");
+    const item = insertItem(d, { name: "Thing", unitCostCents: 100, qtyPurchased: 5, lotId: null });
+    setAlias(d, "Thing", item);
+    saveLedger(d, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 12, 2026, 10:00:00 AM","$${(saleCents / 100).toFixed(2)}","L1","O1","Earnings for selling a Thing #1","completed","SALES",""
+"Jun 13, 2026, 10:00:00 AM","-$${(reversalCents / 100).toFixed(2)}","L1","O1","Reversal of sales transaction for order refund","completed","ADJUSTMENT",""`));
+    return listRefunds(d);
+  };
+
+  it("calls a full reversal of the sale a cancellation", () => {
+    const [r] = build(5392, 5392);
+    expect(r.isCancellation).toBe(true);
+  });
+
+  it("calls a partial reversal a refund", () => {
+    const [r] = build(5392, 2000);
+    expect(r.isCancellation).toBe(false);
+  });
+
+  it("never marks a return-shipping deduction as a cancellation", () => {
+    const d = createDb(":memory:");
+    saveLedger(d, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 14, 2026, 9:00:01 AM","-$1.50","","","Deduction for order refund shipping costs [Order Id: O9]","completed","ADJUSTMENT",""`));
+    const [r] = listRefunds(d);
+    expect(r.isShipping).toBe(true);
+    expect(r.isCancellation).toBe(false);
+  });
+
+  it("treats a cancellation fee as a cancellation even with no sale row", () => {
+    const d = createDb(":memory:");
+    saveLedger(d, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 14, 2026, 9:00:00 AM","-$3.00","","","Fee for order cancellation","completed","ADJUSTMENT",""`));
+    const [r] = listRefunds(d);
+    expect(r.isCancellation).toBe(true);
+  });
+
+  it("does not call a reversal with no matching sale a cancellation", () => {
+    const d = createDb(":memory:");
+    saveLedger(d, parseLedger(`"Created Date","Amount","Listing ID","Order ID","Message","Status","Transaction Type","Completed Date"
+"Jun 14, 2026, 9:00:00 AM","-$5.00","L1","OZZ","Reversal of sales transaction for order refund","completed","ADJUSTMENT",""`));
+    expect(listRefunds(d)[0].isCancellation).toBe(false);
+  });
+});
+
 describe("listRefunds ordering", () => {
   // created_at is a formatted string ("Sep 9, 2026, 6:52:28 AM"). Sorting on it
   // puts Sep before Jun and "Sep 9" before "Sep 15".

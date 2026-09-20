@@ -4,7 +4,7 @@ import type { RefundRow } from "@/lib/db/ledger-refunds";
 
 const row = (over: Partial<RefundRow>): RefundRow => ({
   showDate: "2026-08-11", amountCents: -500, orderId: "o1",
-  productName: "Cheese Squishy", itemId: 1, isShipping: false, ...over,
+  productName: "Cheese Squishy", itemId: 1, isShipping: false, isCancellation: false, ...over,
 });
 
 describe("summariseRefunds", () => {
@@ -62,8 +62,30 @@ describe("summariseRefunds", () => {
     const s = summariseRefunds([]);
     expect(s).toEqual({
       productCents: 0, productCount: 0, shippingCents: 0, shippingCount: 0,
+      cancelledCents: 0, cancelledCount: 0,
       topProduct: null, topProductCents: 0, topProductCount: 0,
     });
+  });
+
+  it("counts cancellations apart from refunds", () => {
+    const s = summariseRefunds([
+      row({ amountCents: -800 }),
+      row({ amountCents: -5392, isCancellation: true }),
+      row({ amountCents: -200, isShipping: true, productName: null }),
+    ]);
+    expect(s.cancelledCents).toBe(-5392);
+    expect(s.cancelledCount).toBe(1);
+    expect(s.productCents).toBe(-800);   // cancellation excluded
+    expect(s.productCount).toBe(1);
+  });
+
+  // A cancelled order is not a returned product; it must not win "most refunded".
+  it("ignores cancellations when picking the top refunded product", () => {
+    const s = summariseRefunds([
+      row({ productName: "Cancelled Big", amountCents: -5392, isCancellation: true }),
+      row({ productName: "Truly Refunded", amountCents: -300 }),
+    ]);
+    expect(s.topProduct).toBe("Truly Refunded");
   });
 
   // An unmapped refund still has a name worth grouping on.

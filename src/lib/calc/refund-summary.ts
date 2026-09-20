@@ -5,6 +5,8 @@ export interface RefundSummary {
   productCount: number;
   shippingCents: number;   // return-shipping refunds (negative)
   shippingCount: number;
+  cancelledCents: number;  // orders voided before shipping (negative)
+  cancelledCount: number;
   topProduct: string | null;    // most refunded BY TOTAL, not by single largest
   topProductCents: number;
   topProductCount: number;
@@ -14,6 +16,7 @@ export interface RefundSummary {
  *  ledger, so they read as money leaving. */
 export function summariseRefunds(refunds: RefundRow[]): RefundSummary {
   let productCents = 0, productCount = 0, shippingCents = 0, shippingCount = 0;
+  let cancelledCents = 0, cancelledCount = 0;
   // Group by name, not itemId: an unmapped refund has no item but still has a
   // name worth counting.
   const byProduct = new Map<string, { cents: number; count: number }>();
@@ -22,6 +25,13 @@ export function summariseRefunds(refunds: RefundRow[]): RefundSummary {
     if (r.isShipping) {
       shippingCents += r.amountCents;
       shippingCount += 1;
+      continue;
+    }
+    // A cancelled order was never returned, so it stays out of the refund
+    // figures entirely -- including the most-refunded ranking below.
+    if (r.isCancellation) {
+      cancelledCents += r.amountCents;
+      cancelledCount += 1;
       continue;
     }
     productCents += r.amountCents;
@@ -44,5 +54,8 @@ export function summariseRefunds(refunds: RefundRow[]): RefundSummary {
     }
   }
 
-  return { productCents, productCount, shippingCents, shippingCount, topProduct, topProductCents, topProductCount };
+  return {
+    productCents, productCount, shippingCents, shippingCount,
+    cancelledCents, cancelledCount, topProduct, topProductCents, topProductCount,
+  };
 }

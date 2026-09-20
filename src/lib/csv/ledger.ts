@@ -80,7 +80,9 @@ function classify(txnType: string, message: string): LedgerKind {
     // refund. As 'payout' it cancels the original withdrawal and stays out of
     // show profit; as 'refund' it would be booked as revenue for that day.
     if (PAYOUT_FAILURE_RE.test(message)) return "payout";
-    if (/refund/i.test(message)) return "refund";
+    // A cancellation fee is money lost on an order that never shipped, so it
+    // belongs with refunds rather than pooled into 'other' with promo spend.
+    if (/refund|cancellation/i.test(message)) return "refund";
     return /Sales Match Bonus/i.test(message) ? "bonus" : "other";
   }
   if (txnType === "SALES") {

@@ -1,6 +1,6 @@
 import { dbForRequest } from "@/lib/auth/request";
 import { buildLedgerReport } from "@/lib/calc/ledger-report";
-import { listRefunds, refundsTotalCents } from "@/lib/db/ledger-refunds";
+import { listRefunds } from "@/lib/db/ledger-refunds";
 import { Money } from "@/components/Money";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
@@ -13,8 +13,9 @@ export const dynamic = "force-dynamic";
 export default async function RefundsPage() {
   const db = await dbForRequest();
   const refunds = listRefunds(db);
-  const total = refundsTotalCents(db);
   const s = summariseRefunds(refunds);
+  const cancellations = refunds.filter((r) => r.isCancellation);
+  const returns = refunds.filter((r) => !r.isCancellation);
 
   // Dates that carry refunds/fees/claims but no sales -- the same story as the
   // itemised list, at day granularity.
@@ -27,19 +28,25 @@ export default async function RefundsPage() {
       <PageHeader title="Refunds" subtitle="Money returned to buyers, and days with no sales" />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat label="Total refunded" value={<Money cents={total} />}
-          sub={`${refunds.length} refund${refunds.length === 1 ? "" : "s"}`} />
-        <Stat label="Product refunds" value={<Money cents={s.productCents} />}
-          sub={`${s.productCount} of ${refunds.length}`} />
+        <Stat label="Refunded" value={<Money cents={s.productCents} />}
+          sub={`${s.productCount} returned order${s.productCount === 1 ? "" : "s"}`} />
+        <Stat label="Cancelled" value={<Money cents={s.cancelledCents} />}
+          sub={`${s.cancelledCount} order${s.cancelledCount === 1 ? "" : "s"} never shipped`} />
         <Stat label="Return shipping" value={<Money cents={s.shippingCents} />}
-          sub={`${s.shippingCount} of ${refunds.length}`} />
+          sub={`${s.shippingCount} deduction${s.shippingCount === 1 ? "" : "s"}`} />
         <Stat label="Most refunded" value={s.topProduct ?? "—"}
           sub={s.topProduct ? <><Money cents={s.topProductCents} /> over {s.topProductCount}</> : "no product refunds"} />
       </div>
 
-      {refunds.length === 0
-        ? <p className="text-slate-500">No refunds in the imported ledger.</p>
-        : <RefundsCard refunds={refunds} totalCents={total} />}
+      {refunds.length === 0 && <p className="text-slate-500">No refunds in the imported ledger.</p>}
+
+      {returns.length > 0 && (
+        <RefundsCard refunds={returns} totalCents={s.productCents + s.shippingCents} title="Refunds" />
+      )}
+
+      {cancellations.length > 0 && (
+        <RefundsCard refunds={cancellations} totalCents={s.cancelledCents} title="Cancellations" />
+      )}
 
       {nonShows.length > 0 && (
         <Card title={<div className="flex justify-between"><span>Non-show activity ({nonShows.length})</span><span className="normal-case">Net: <Money cents={nonShowNetCents} /></span></div>}>
