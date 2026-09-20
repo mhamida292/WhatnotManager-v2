@@ -101,6 +101,7 @@ export default async function ShowDetail({ params }: { params: Promise<{ id: str
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <Card title="Summary">
           <SummarySection label="Sales" rows={salesRows} />
+          <div className="mt-4 border-t-2 border-slate-300" />
           <SummarySection label="Volume" rows={volumeRows} />
         </Card>
 
