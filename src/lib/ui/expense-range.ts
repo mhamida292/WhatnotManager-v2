@@ -87,3 +87,29 @@ export function shiftMonth(month: string, delta: number): string {
   const idx = y * 12 + (m - 1) + delta;
   return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, "0")}`;
 }
+
+/** Step a 'YYYY-Www' week by whole weeks. Shifts the week's Monday by 7 days a
+ *  time and re-derives the ISO week, so the year boundary lands on the real
+ *  last week (W52 or W53) instead of a naive W00. Returns the input untouched
+ *  when it is not a week string, so a hand-edited URL cannot crash the arrows. */
+export function shiftWeek(week: string, delta: number): string {
+  const r = weekRange(week);
+  if (!r) return week;
+  const monday = new Date(`${r.from}T00:00:00Z`);
+  monday.setUTCDate(monday.getUTCDate() + delta * 7);
+  return currentIsoWeek(monday);
+}
+
+const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/** 'YYYY-Www' as the days it covers: "Sep 14 – 20, 2026", naming the second
+ *  month only when the week straddles two. Falls back to the raw string. */
+export function weekLabel(week: string): string {
+  const r = weekRange(week);
+  if (!r || !r.from || !r.to) return week;
+  const [fy, fm, fd] = r.from.split("-").map(Number);
+  const [, tm, td] = r.to.split("-").map(Number);
+  const start = `${SHORT_MONTHS[fm - 1]} ${fd}`;
+  const end = fm === tm ? `${td}` : `${SHORT_MONTHS[tm - 1]} ${td}`;
+  return `${start} – ${end}, ${fy}`;
+}
