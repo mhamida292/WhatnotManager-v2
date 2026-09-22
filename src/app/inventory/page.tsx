@@ -14,8 +14,6 @@ import { Stat } from "@/components/ui/Stat";
 import { Button } from "@/components/ui/Button";
 import { InventoryTable } from "@/components/InventoryTable";
 import { itemSpendCents, listPurchases } from "@/lib/db/purchases";
-import { listInvoices } from "@/lib/db/invoices";
-import { periodicSpend } from "@/lib/calc/purchase-spend";
 import { ArchivedTable } from "@/components/inventory/ArchivedTable";
 import { ReceiveStock } from "@/components/inventory/ReceiveStock";
 import { buildMapSuggestions } from "@/lib/calc/map-suggestions";
@@ -43,12 +41,6 @@ export default async function InventoryPage() {
   const itemCosts = items.map((i) => itemSpendCents(db, i.id));
   const spend = netInventorySpend({ itemCostsCents: itemCosts });
   const stock = inStockSummary(items);
-  // Purchase invoices only: what you spent restocking, by period.
-  const spendByPeriod = periodicSpend(
-    listInvoices(db).filter((i) => i.direction === "purchase")
-      .map((i) => ({ invoiceDate: i.invoiceDate, total: i.total })),
-    new Date().toISOString().slice(0, 10),
-  );
 
   return (
     <div className="space-y-6">
@@ -72,23 +64,6 @@ export default async function InventoryPage() {
         <Stat label="True net inventory spend" value={<Money cents={spend} />} />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Spend this month" value={<Money cents={spendByPeriod.thisMonthCents} />}
-          sub={<>
-            {spendByPeriod.thisMonthCount} invoice{spendByPeriod.thisMonthCount === 1 ? "" : "s"}
-            {spendByPeriod.changePct != null && (
-              <span className={spendByPeriod.changePct > 0 ? " text-amber-700" : " text-emerald-700"}>
-                {" · "}{spendByPeriod.changePct > 0 ? "+" : ""}{spendByPeriod.changePct}% vs last
-              </span>
-            )}
-          </>} />
-        <Stat label="Spend last month" value={<Money cents={spendByPeriod.lastMonthCents} />}
-          sub={`${spendByPeriod.lastMonthCount} invoice${spendByPeriod.lastMonthCount === 1 ? "" : "s"}`} />
-        <Stat label="Average per month" value={<Money cents={spendByPeriod.avgPerMonthCents} />}
-          sub={`over ${spendByPeriod.monthsSpanned} month${spendByPeriod.monthsSpanned === 1 ? "" : "s"}`} />
-        <Stat label="Total purchase spend" value={<Money cents={spendByPeriod.lifetimeCents} />}
-          sub={`${spendByPeriod.lifetimeCount} purchase invoices`} />
-      </div>
 
       {unmappedCount > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">

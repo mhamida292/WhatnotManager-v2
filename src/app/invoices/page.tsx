@@ -5,6 +5,8 @@ import { Money } from "@/components/Money";
 import { Badge } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Stat } from "@/components/ui/Stat";
+import { periodicSpend } from "@/lib/calc/purchase-spend";
 import { NewInvoiceButton } from "@/components/NewInvoiceButton";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +31,12 @@ export default async function InvoicesPage({
   const owedToYou = all
     .filter((i) => i.direction === "sale" && i.status === "posted" && !i.paid)
     .reduce((s, i) => s + i.total, 0);
+  // Purchase invoices only: what restocking costs over time.
+  const spend = periodicSpend(
+    all.filter((i) => i.direction === "purchase")
+      .map((i) => ({ invoiceDate: i.invoiceDate, total: i.total })),
+    new Date().toISOString().slice(0, 10),
+  );
   const youOwe = all
     .filter((i) => i.direction === "purchase" && i.status === "posted" && !i.paid)
     .reduce((s, i) => s + i.total, 0);
@@ -40,6 +48,24 @@ export default async function InvoicesPage({
         subtitle="Purchase and sales invoices"
         action={<NewInvoiceButton />}
       />
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Spend this month" value={<Money cents={spend.thisMonthCents} />}
+          sub={<>
+            {spend.thisMonthCount} invoice{spend.thisMonthCount === 1 ? "" : "s"}
+            {spend.changePct != null && (
+              <span className={spend.changePct > 0 ? " text-amber-700" : " text-emerald-700"}>
+                {" · "}{spend.changePct > 0 ? "+" : ""}{spend.changePct}% vs last
+              </span>
+            )}
+          </>} />
+        <Stat label="Spend last month" value={<Money cents={spend.lastMonthCents} />}
+          sub={`${spend.lastMonthCount} invoice${spend.lastMonthCount === 1 ? "" : "s"}`} />
+        <Stat label="Average per month" value={<Money cents={spend.avgPerMonthCents} />}
+          sub={`over ${spend.monthsSpanned} month${spend.monthsSpanned === 1 ? "" : "s"}`} />
+        <Stat label="Total purchase spend" value={<Money cents={spend.lifetimeCents} />}
+          sub={`${spend.lifetimeCount} purchase invoices`} />
+      </div>
 
       {/* Filter tabs */}
       <div className="flex gap-1 border-b border-line">
