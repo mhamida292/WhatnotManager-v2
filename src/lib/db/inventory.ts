@@ -119,6 +119,24 @@ export function aliasesForItem(db: DB, itemId: number): ItemAlias[] {
     ORDER BY pa.code`).all(itemId) as ItemAlias[];
 }
 
+/** Every item's Whatnot names in one query, most-sold first then by name.
+ *  Items with no Whatnot name are absent. */
+export function whatnotAliasesByItem(db: DB): Map<number, string[]> {
+  const rows = db.prepare(`SELECT pa.item_id AS itemId, pa.code AS productName
+    FROM item_identifiers pa
+    LEFT JOIN ledger_transactions lt
+      ON lt.product_name = pa.code AND lt.kind = 'sale'
+    WHERE pa.source = 'whatnot'
+    GROUP BY pa.id, pa.item_id, pa.code
+    ORDER BY COUNT(lt.id) DESC, pa.code`).all() as { itemId: number; productName: string }[];
+  const map = new Map<number, string[]>();
+  for (const r of rows) {
+    const list = map.get(r.itemId);
+    if (list) list.push(r.productName); else map.set(r.itemId, [r.productName]);
+  }
+  return map;
+}
+
 export interface ItemSale { showDate: string; productName: string; amountCents: number; }
 
 /** Individual ledger sale rows counting toward this item (via the alias map),
