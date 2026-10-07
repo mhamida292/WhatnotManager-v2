@@ -127,11 +127,12 @@ export function InventoryTable({ items, whatnotOnly }: { items: InventoryRow[]; 
             <span className="ml-1 text-slate-400">{key === c.key ? (dir === "asc" ? "▲" : "▼") : ""}</span>
           </th>
         ))}
-        <th className="px-3 py-2">Location</th>
+        {/* Location is hidden in Whatnot-only mode for now; the data is kept. */}
+        {!whatnotOnly && <th className="px-3 py-2">Location</th>}
         <th className="px-3 py-2" />
       </>}>
         {sorted.length === 0 && (
-          <tr><td colSpan={COLUMNS.length + 3} className="px-3 py-3 text-slate-500">No items match your filters.</td></tr>
+          <tr><td colSpan={COLUMNS.length + (whatnotOnly ? 2 : 3)} className="px-3 py-3 text-slate-500">No items match your filters.</td></tr>
         )}
         {sorted.map((i) => {
           const badge = stockBadge(i.remaining);
@@ -163,7 +164,7 @@ export function InventoryTable({ items, whatnotOnly }: { items: InventoryRow[]; 
                 </>
               )}
               <td className="px-3 py-2">{i.remaining}</td>
-              <td className="px-3 py-2">{i.location ?? "—"}</td>
+              {!whatnotOnly && <td className="px-3 py-2">{i.location ?? "—"}</td>}
               <td className="px-3 py-2 text-right">
                 <div className="flex items-center justify-end gap-3">
                   <button onClick={() => setEditing(i)} className="text-sm font-medium text-emerald-700 hover:underline">Edit</button>

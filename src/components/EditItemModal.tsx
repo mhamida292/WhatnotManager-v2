@@ -98,13 +98,13 @@ export function EditItemModal({ itemId, name, location, initialPurchases, onClos
             <span className="text-slate-500">Name</span>
             <input type="text" className={`mt-1 w-full ${INPUT_CLASS}`} value={dName} onChange={(e) => setDName(e.target.value)} />
           </label>
-          <label className="block text-sm">
+          {!whatnotOnly && <label className="block text-sm">
             <span className="text-slate-500">Location</span>
             <input className={`w-full ${INPUT_CLASS}`} placeholder="e.g. A3-2"
               value={dLoc} onChange={(e) => setDLoc(e.target.value)}
               onBlur={() => fetch("/api/inventory", { method: "PATCH", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id: itemId, location: dLoc.trim() || null }) })} />
-          </label>
+          </label>}
           {dirty && <span className="text-xs font-medium text-amber-600">Unsaved changes</span>}
           {detailsError && <p className="mt-2 text-sm text-red-600">{detailsError}</p>}
           <div className="mt-3 flex justify-end gap-2">
