@@ -10,7 +10,7 @@ const cat = item({ id: 2, name: "Squish Cat", sku: "ITEM-00002", aliases: ["MINI
 const bare = item({ id: 3, name: "Unmapped Thing", expected: 5 });
 
 describe("rowLabel", () => {
-  it("shows the first (most-sold) Whatnot alias and the rest as others", () => {
+  it("shows the first (most recently sold) Whatnot alias and the rest as others", () => {
     expect(rowLabel(donut, "whatnot")).toEqual({ text: "CRUNCHY DONUT✨🍩", fallback: false, others: ["CRUNCHY WAX DONUT✨🍩"] });
   });
 

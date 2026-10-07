@@ -8,7 +8,7 @@ export interface CountItem {
   id: number;
   name: string;
   sku: string | null;
-  aliases: string[];   // Whatnot names, most-sold first
+  aliases: string[];   // Whatnot names, most recently sold first
   expected: number;
 }
 

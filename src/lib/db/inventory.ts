@@ -119,8 +119,9 @@ export function aliasesForItem(db: DB, itemId: number): ItemAlias[] {
     ORDER BY pa.code`).all(itemId) as ItemAlias[];
 }
 
-/** Every item's Whatnot names in one query, most-sold first then by name.
- *  Items with no Whatnot name are absent. */
+/** Every item's Whatnot names in one query, most recently sold first -- names
+ *  drift, and the latest is what's on the current listing. Never-sold names go
+ *  last; ties fall to sales, then name. Items with no Whatnot name are absent. */
 export function whatnotAliasesByItem(db: DB): Map<number, string[]> {
   const rows = db.prepare(`SELECT pa.item_id AS itemId, pa.code AS productName
     FROM item_identifiers pa
@@ -128,7 +129,7 @@ export function whatnotAliasesByItem(db: DB): Map<number, string[]> {
       ON lt.product_name = pa.code AND lt.kind = 'sale'
     WHERE pa.source = 'whatnot'
     GROUP BY pa.id, pa.item_id, pa.code
-    ORDER BY COUNT(lt.id) DESC, pa.code`).all() as { itemId: number; productName: string }[];
+    ORDER BY MAX(lt.show_date) IS NULL, MAX(lt.show_date) DESC, COUNT(lt.id) DESC, pa.code`).all() as { itemId: number; productName: string }[];
   const map = new Map<number, string[]>();
   for (const r of rows) {
     const list = map.get(r.itemId);
