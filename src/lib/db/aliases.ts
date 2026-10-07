@@ -79,3 +79,27 @@ export function addIdentifier(
     .run(p.itemId, p.source, base, p.supplierLabel ?? null);
   return { ok: true, id: Number(info.lastInsertRowid) };
 }
+
+export interface WhatnotMapping {
+  id: number;
+  productName: string;
+  itemId: number;
+  itemName: string;
+  archived: boolean;
+  saleCount: number;
+  lastSoldOn: string | null;
+}
+
+/** Every Whatnot name mapped to an item, with that item and the name's ledger
+ *  sales. Sales resolve through the live alias map, as qtySoldFromLedger does. */
+export function listWhatnotMappings(db: DB): WhatnotMapping[] {
+  const rows = db.prepare(`SELECT pa.id, pa.code AS productName, i.id AS itemId, i.name AS itemName,
+      i.archived_at IS NOT NULL AS archived, COUNT(lt.id) AS saleCount, MAX(lt.show_date) AS lastSoldOn
+    FROM item_identifiers pa
+    JOIN inventory_items i ON i.id = pa.item_id
+    LEFT JOIN ledger_transactions lt ON lt.product_name = pa.code AND lt.kind = 'sale'
+    WHERE pa.source = 'whatnot'
+    GROUP BY pa.id
+    ORDER BY pa.code`).all() as (Omit<WhatnotMapping, "archived"> & { archived: number })[];
+  return rows.map((r) => ({ ...r, archived: r.archived === 1 }));
+}

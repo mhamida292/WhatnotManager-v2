@@ -46,7 +46,10 @@ export default async function InventoryPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Inventory" subtitle="Items, costs, and what's left to sell"
-        action={<Button href="/inventory/count">Count merchandise</Button>} />
+        action={<div className="flex gap-2">
+          <Button variant="secondary" href="/inventory/mappings">Mappings</Button>
+          <Button href="/inventory/count">Count merchandise</Button>
+        </div>} />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {pool ? (
           <>
