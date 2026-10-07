@@ -142,8 +142,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 : "No shows in this period."}
             </td></tr>
           )}
-          {[...realShows].reverse().map((s) => (
-            <tr key={s.showId} className={`border-t border-line hover:bg-slate-50 ${s.netCents < 0 ? "bg-red-50/60" : ""}`}>
+          {[...realShows].reverse().map((s, idx) => (
+            <tr key={s.showId} className={`border-t border-line hover:bg-slate-100 ${s.netCents < 0 ? "bg-red-50/60" : idx % 2 === 1 ? "bg-slate-50" : ""}`}>
               <td className="px-4 py-2">
                 <Link href={`/shows/${s.showId}`} className="font-medium text-brand-700 hover:underline">
                   {showSessionLabel(s)}

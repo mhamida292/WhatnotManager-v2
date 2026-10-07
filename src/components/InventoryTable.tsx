@@ -136,10 +136,10 @@ export function InventoryTable({ items, whatnotOnly }: { items: InventoryRow[]; 
         {sorted.length === 0 && (
           <tr><td colSpan={COLUMNS.length + (whatnotOnly ? 3 : 4)} className="px-3 py-3 text-slate-500">No items match your filters.</td></tr>
         )}
-        {sorted.map((i) => {
+        {sorted.map((i, idx) => {
           const badge = stockBadge(i.remaining);
           return (
-            <tr key={i.id} className={`border-t border-line ${selected.has(i.id) ? "bg-brand-50" : i.archivedAt ? "bg-slate-50 text-slate-400" : ""}`}>
+            <tr key={i.id} className={`border-t border-line ${selected.has(i.id) ? "bg-brand-50" : idx % 2 === 1 ? "bg-slate-50" : ""} ${i.archivedAt ? "text-slate-400" : ""}`}>
               <td className="px-3 py-2"><input type="checkbox" checked={selected.has(i.id)} onChange={() => toggle(i.id)} aria-label={`Select ${i.name}`} /></td>
               <td className="px-3 py-2">
                 <Link href={`/inventory/${i.id}`} className="font-medium text-emerald-700 hover:underline">{i.name}</Link>

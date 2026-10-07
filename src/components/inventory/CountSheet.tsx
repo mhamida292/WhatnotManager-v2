@@ -77,11 +77,11 @@ export function CountSheet({ items }: { items: CountItem[] }) {
             {shown.length === 0 && (
               <tr><td colSpan={5} className="px-3 py-6 text-center text-sm text-slate-400">No items match “{query.trim()}”.</td></tr>
             )}
-            {shown.map((it) => {
+            {shown.map((it, idx) => {
               const d = countDiff(it, counts[it.id]);
               const label = rowLabel(it, mode);
               return (
-                <tr key={it.id} className="border-t border-line">
+                <tr key={it.id} className={`border-t border-line ${idx % 2 === 1 ? "bg-slate-50" : ""}`}>
                   <td className="px-3 py-2">
                     <span className={label.fallback ? "text-slate-400" : undefined}>{label.text}</span>
                     {label.others.length > 0 && (

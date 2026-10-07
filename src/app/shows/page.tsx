@@ -28,8 +28,8 @@ export default async function ShowsPage() {
             No shows saved yet. Upload a CSV above, fill in the date and payout, then Save.
           </td></tr>
         )}
-        {shows.map((s) => (
-          <tr key={s.id} className="border-t border-line hover:bg-slate-50">
+        {shows.map((s, idx) => (
+          <tr key={s.id} className={`border-t border-line hover:bg-slate-100 ${idx % 2 === 1 ? "bg-slate-50" : ""}`}>
             <td className="px-4 py-2">
               <Link className="font-medium text-brand-700 hover:underline" href={`/shows/${s.id}`}>
                 {s.showDate || `Show #${s.id} (no date)`}
