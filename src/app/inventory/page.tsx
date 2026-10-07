@@ -17,6 +17,7 @@ import { itemSpendCents, listPurchases } from "@/lib/db/purchases";
 import { ArchivedTable } from "@/components/inventory/ArchivedTable";
 import { ReceiveStock } from "@/components/inventory/ReceiveStock";
 import { buildMapSuggestions } from "@/lib/calc/map-suggestions";
+import { invoiceNumber } from "@/lib/db/invoices";
 import { UnmappedSuggestions } from "@/components/inventory/UnmappedSuggestions";
 import { DismissedNames } from "@/components/inventory/DismissedNames";
 
@@ -79,12 +80,18 @@ export default async function InventoryPage() {
 
       {/* All items, archived included -- the table's own Active/Archived filter
           decides what shows, so search can reach archived stock. */}
-      <InventoryTable whatnotOnly={whatnotOnly} items={items.map((i) => ({
+      <InventoryTable whatnotOnly={whatnotOnly} items={items.map((i) => {
+        const purchases = listPurchases(db, i.id);
+        // Each invoice the item was bought on, once, newest first.
+        const invoiceIds = [...new Set(purchases.map((p) => p.invoiceId).filter((id): id is number => id != null))].reverse();
+        return {
         id: i.id, name: i.name, location: i.location, unitCostCents: i.unitCostCents, archivedAt: i.archivedAt,
         qtyPurchased: i.qtyPurchased, sold: i.sold, remaining: i.remaining,
         warehouse: i.warehouse, whatnot: i.whatnot,
-        purchases: listPurchases(db, i.id).map((p) => ({ id: p.id, purchasedOn: p.purchasedOn, quantity: p.quantity, unitCostCents: p.unitCostCents })),
-      }))} />
+        purchases: purchases.map((p) => ({ id: p.id, purchasedOn: p.purchasedOn, quantity: p.quantity, unitCostCents: p.unitCostCents })),
+        invoices: invoiceIds.map((id) => ({ id, number: invoiceNumber(id) })),
+      };
+      })} />
 
       {archived.length > 0 && (
         <ArchivedTable rows={archived.map((i) => ({ id: i.id, name: i.name, remaining: i.remaining, archivedAt: i.archivedAt }))} />

@@ -22,6 +22,7 @@ export interface InventoryRow {
   id: number;
   name: string;
   location: string | null;
+  invoices: { id: number; number: string }[];   // newest first
   unitCostCents: number;
   qtyPurchased: number;
   sold: number;
@@ -129,10 +130,11 @@ export function InventoryTable({ items, whatnotOnly }: { items: InventoryRow[]; 
         ))}
         {/* Location is hidden in Whatnot-only mode for now; the data is kept. */}
         {!whatnotOnly && <th className="px-3 py-2">Location</th>}
+        <th className="px-3 py-2">Invoice</th>
         <th className="px-3 py-2" />
       </>}>
         {sorted.length === 0 && (
-          <tr><td colSpan={COLUMNS.length + (whatnotOnly ? 2 : 3)} className="px-3 py-3 text-slate-500">No items match your filters.</td></tr>
+          <tr><td colSpan={COLUMNS.length + (whatnotOnly ? 3 : 4)} className="px-3 py-3 text-slate-500">No items match your filters.</td></tr>
         )}
         {sorted.map((i) => {
           const badge = stockBadge(i.remaining);
@@ -165,6 +167,14 @@ export function InventoryTable({ items, whatnotOnly }: { items: InventoryRow[]; 
               )}
               <td className="px-3 py-2">{i.remaining}</td>
               {!whatnotOnly && <td className="px-3 py-2">{i.location ?? "—"}</td>}
+              <td className="px-3 py-2 whitespace-nowrap">
+                {i.invoices.length === 0 ? <span className="text-slate-400">—</span> : i.invoices.map((inv, n) => (
+                  <span key={inv.id}>
+                    {n > 0 && ", "}
+                    <Link href={`/invoices/${inv.id}`} className="text-emerald-700 hover:underline">{inv.number}</Link>
+                  </span>
+                ))}
+              </td>
               <td className="px-3 py-2 text-right">
                 <div className="flex items-center justify-end gap-3">
                   <button onClick={() => setEditing(i)} className="text-sm font-medium text-emerald-700 hover:underline">Edit</button>
